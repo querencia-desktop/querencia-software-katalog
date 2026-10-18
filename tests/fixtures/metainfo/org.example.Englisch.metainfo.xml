@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.example.Englisch</id>
+  <pkgname>englisch-app</pkgname>
+  <name>English Only</name>
+  <summary>Only English texts</summary>
+  <description>
+    <p>No translations exist.</p>
+  </description>
+  <categories>
+    <category>Network</category>
+  </categories>
+</component>

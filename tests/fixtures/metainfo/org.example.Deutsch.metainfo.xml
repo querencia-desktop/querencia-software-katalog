@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.example.Deutsch</id>
+  <pkgname>deutsch-app</pkgname>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>Dictionary</name>
+  <name xml:lang="de">Wörterbuch</name>
+  <summary>Look up words</summary>
+  <summary xml:lang="de">Wörter nachschlagen</summary>
+  <description>
+    <p>Look up words quickly.</p>
+    <p xml:lang="de">Schlagen Sie Wörter schnell nach.</p>
+    <ul>
+      <li>Offline</li>
+      <li xml:lang="de">Ohne Netz</li>
+    </ul>
+  </description>
+  <keywords>
+    <keyword>dictionary</keyword>
+    <keyword xml:lang="de">Lexikon</keyword>
+  </keywords>
+  <categories>
+    <category>Utility</category>
+    <category>Education</category>
+  </categories>
+  <url type="homepage">https://woerterbuch.example</url>
+  <icon type="stock">deutsch-app</icon>
+</component>

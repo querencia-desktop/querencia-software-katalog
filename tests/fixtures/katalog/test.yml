@@ -1,0 +1,151 @@
+---
+File: DEP-11
+Version: '1.0'
+Origin: test-origin
+MediaBaseUrl: https://medien.example/media
+---
+Type: desktop-application
+ID: org.example.Notizen.desktop
+Package: notizen
+ProjectLicense: GPL-3.0+
+Name:
+  C: Notes
+  de: Notizen
+  fr: Notes
+Summary:
+  C: Take quick notes
+  de: Schnelle Notizen anfertigen
+Description:
+  C: >-
+    <p>Write down <em>quick</em> notes.</p>
+  de: >-
+    <p>Schreiben Sie schnelle Notizen auf.
+    Sie bleiben &amp; erhalten.</p>
+
+    <ul>
+      <li>Einfach</li>
+      <li>Schnell</li>
+    </ul>
+Categories:
+- Utility
+- TextEditor
+Keywords:
+  C:
+  - memo
+  de:
+  - Merkzettel
+  - Gedächtnis
+Icon:
+  stock: notizen
+  remote:
+  - url: n/o/notizen.png
+    width: 128
+    height: 128
+Url:
+  homepage: https://notizen.example
+Screenshots:
+- default: true
+  source-image:
+    url: n/o/shot.png
+    width: 800
+    height: 600
+---
+Type: desktop-application
+ID: org.example.Buero.desktop
+Package: bueroklammer
+Name:
+  C: Office Clip
+  de_DE: Büroklammer
+Summary:
+  C: Organize your office work
+  de_DE: Büroarbeit organisieren
+Categories:
+- Office
+- Database
+- Development
+Icon:
+  cached:
+  - name: buero_buero.png
+    width: 48
+    height: 48
+  - name: buero_buero.png
+    width: 64
+    height: 64
+---
+Type: desktop-application
+ID: org.example.Spiel.desktop
+Package: spiel
+Name:
+  C: Space Blocks
+Summary:
+  C: Falling blocks in space
+Description:
+  C: >-
+    <p>Only English here.</p>
+Categories:
+- Game
+- BlocksGame
+Icon:
+  stock: spiel
+---
+Type: desktop-application
+ID: org.example.Fremd.desktop
+Package: fremd
+Name:
+  C: Fremdes
+Summary:
+  C: Toolkit only
+Categories:
+- GTK
+- Qt
+---
+Type: console-application
+ID: org.example.Zeile
+Package: zeilenwerkzeug
+Name:
+  C: Zeilenwerkzeug
+Summary:
+  C: Does things on the command line
+Categories:
+- ConsoleOnly
+- System
+---
+Type: desktop-application
+ID: org.example.SnapApp.desktop
+Package: snapapp
+Name:
+  C: Snap App
+Summary:
+  C: Comes as a snap
+Bundles:
+- type: snap
+  id: snap-app
+Categories:
+- Utility
+---
+Type: desktop-application
+ID: org.example.OhnePaket.desktop
+Name:
+  C: Without Package
+Summary:
+  C: No package here
+Categories:
+- Utility
+---
+Type: font
+ID: org.example.Schrift
+Package: fonts-beispiel
+Name:
+  C: Beispielschrift
+Summary:
+  C: A font
+---
+Type: addon
+ID: org.example.Erweiterung
+Package: notizen-erweiterung
+Name:
+  C: Erweiterung
+Summary:
+  C: An addon
+Extends:
+- org.example.Notizen.desktop
