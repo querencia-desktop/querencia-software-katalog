@@ -23,7 +23,8 @@ fn geladen() -> (AppStreamKatalog, qs_katalog::Statistik) {
 #[test]
 fn zaehlung_und_filter() {
     let (k, s) = geladen();
-    // YAML: 9 Komponenten, XML: 3 lesbare (die kaputte Datei wird gemeldet, nicht fatal).
+    // YAML: 9 Komponenten, XML: 4 lesbare, davon eine mit Katalog-ID (die kaputte Datei wird
+    // gemeldet, nicht fatal).
     assert_eq!(s.komponenten, 12);
     // Sichtbar: Notizen, Büroklammer, Spiel, Fremdes, Zeilenwerkzeug, Wörterbuch, English Only.
     assert_eq!(s.mit_paket, 7, "{:?}", k.alle().iter().map(|a| &a.id).collect::<Vec<_>>());
@@ -34,7 +35,7 @@ fn zaehlung_und_filter() {
     assert_eq!(b.konsolenanwendungen, 1);
     assert_eq!(b.fehler.len(), 1, "kaputte MetaInfo-Datei muss gemeldet werden");
     assert!(b.fehler[0].0.ends_with("kaputt.metainfo.xml"));
-    assert_eq!(s.quellen.len(), 4);
+    assert_eq!(s.quellen.len(), 5);
     assert!(k.nach_id("org.example.SnapApp.desktop").is_none());
     assert!(k.nach_id("org.example.OhnePaket.desktop").is_none());
     assert!(k.nach_id("org.example.OhnePaketXml").is_none());
@@ -65,9 +66,13 @@ fn locale_fallback() {
     // nur de_DE (und C) vorhanden → de_DE
     let b = k.nach_paket("bueroklammer").unwrap();
     assert_eq!(b.name, "Büroklammer");
-    // nur C → C
+    // Nur C im Katalog; die installierte MetaInfo (später gelesen, ohne pkgname und ohne
+    // Beschreibung) liefert Deutsch. Paketname, Symbol, Kategorien und die (englische)
+    // Beschreibung kommen aus dem Katalog.
     let s = k.nach_paket("spiel").unwrap();
-    assert_eq!(s.name, "Space Blocks");
+    assert_eq!(s.name, "Weltraumblöcke");
+    assert_eq!(s.symbol, Symbol::Thema("spiel".into()));
+    assert_eq!(s.kategorien, [Kategorie::Spiele]);
     assert_eq!(s.beschreibung, "Only English here.");
     // MetaInfo mit nur englischen Texten
     let e = k.nach_paket("englisch-app").unwrap();
@@ -84,8 +89,8 @@ fn locale_fallback() {
 #[test]
 fn statistik_deutsch() {
     let (_, s) = geladen();
-    // Deutsche Zusammenfassung: Notizen (de), Büroklammer (de_DE), Wörterbuch (de).
-    assert_eq!(s.deutsch, 3);
+    // Deutsche Zusammenfassung: Notizen (de), Büroklammer (de_DE), Wörterbuch (de), Spiel (MetaInfo).
+    assert_eq!(s.deutsch, 4);
 }
 
 #[test]
@@ -172,7 +177,8 @@ fn suche_gewichtung_und_stabilitaet() {
     // Paketname: „zeilenwerkzeug“ ist auch der Name; „fremd“ trifft Paketname/Name.
     assert_eq!(k.suchen("zeilen")[0].paketname.as_deref(), Some("zeilenwerkzeug"));
     // Mehrere Wörter müssen alle treffen.
-    assert_eq!(k.suchen("space blocks").len(), 1);
+    assert_eq!(k.suchen("weltraum").len(), 1);
+    assert_eq!(k.suchen("fallende bloecke").len(), 1);
     assert!(k.suchen("space gibtesnicht").is_empty());
     // Leere Eingabe: keine Treffer.
     assert!(k.suchen("   ").is_empty());

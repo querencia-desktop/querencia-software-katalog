@@ -8,7 +8,9 @@ use qs_typen::{Anwendung, Kategorie, Symbol};
 
 use crate::komponente::{Quellkopf, RohKomponente, SymbolDatei};
 use crate::suche::{self, Suchfelder};
-use crate::{beschreibung, dep11, kategorien, symbole, xml, Katalog, Statistik};
+use qs_typen::{Katalog, Statistik};
+
+use crate::{beschreibung, dep11, kategorien, symbole, xml};
 
 /// Höchstzahl der Suchtreffer.
 pub const MAX_TREFFER: usize = 200;
@@ -103,7 +105,19 @@ pub struct Ladebericht {
     pub dauer: Duration,
 }
 
-/// Katalog über die AppStream-Daten des Systems.
+/// Katalog über die AppStream-Daten des Systems; implementiert [`Katalog`] aus `qs_typen`.
+///
+/// Bedeutung der [`Statistik`]-Felder:
+/// - `komponenten`: eindeutige Komponenten aller Typen in allen Quellen (gleiche ID zählt einmal),
+/// - `mit_paket`: sichtbare Anwendungen (`desktop-application`/`console-application` mit Paket,
+///   kein Snap/Flatpak-Bundle),
+/// - `mit_symbol`: sichtbare Anwendungen, für die lokal eine Symboldatei gefunden wurde
+///   (Katalog-Cache oder Themenverzeichnis), nicht nur ein Symbolname,
+/// - `deutsch`: sichtbare Anwendungen mit deutscher Zusammenfassung (`de` oder `de_DE`),
+/// - `quellen`: gelesene Dateien als `"<Pfad> (<n> Komponenten)"` in Leserreihenfolge.
+///
+/// Zusätzlich zum Trait: [`AppStreamKatalog::ladebericht`], [`AppStreamKatalog::zusatz`],
+/// [`AppStreamKatalog::konsolenanwendungen`].
 #[derive(Debug)]
 pub struct AppStreamKatalog {
     konfiguration: Konfiguration,
@@ -111,6 +125,9 @@ pub struct AppStreamKatalog {
     zusatz: Vec<Zusatz>,
     index_id: HashMap<String, usize>,
     index_paket: HashMap<String, usize>,
+    themen: symbole::ThemenIndex,
+    /// Symbolcache-Verzeichnisse, die beim Laden existierten.
+    cache_vorhanden: Vec<PathBuf>,
     ladebericht: Ladebericht,
 }
 
@@ -134,6 +151,8 @@ impl AppStreamKatalog {
             zusatz: Vec::new(),
             index_id: HashMap::new(),
             index_paket: HashMap::new(),
+            themen: symbole::ThemenIndex::default(),
+            cache_vorhanden: Vec::new(),
             ladebericht: Ladebericht::default(),
         }
     }
@@ -216,11 +235,9 @@ impl AppStreamKatalog {
 
         let mut symbol_gefunden = false;
         let symbol = if let Some(thema) = &roh.symbol_thema {
-            symbol_gefunden = symbole::thema_pfad(&self.konfiguration.themen_verzeichnisse, thema, 48).is_some();
+            symbol_gefunden = self.themen.suchen(thema, 48).is_some();
             Symbol::Thema(thema.clone())
-        } else if let Some(p) =
-            symbole::cache_pfad(&self.konfiguration.symbol_cache_verzeichnisse, &roh.origin, &roh.symbole_cache, 64)
-        {
+        } else if let Some(p) = symbole::cache_pfad(&self.cache_vorhanden, &roh.origin, &roh.symbole_cache, 64) {
             symbol_gefunden = true;
             Symbol::Datei(p)
         } else if let Some(l) = roh.symbol_lokal.as_deref().map(Path::new).filter(|p| p.is_file()) {
@@ -269,6 +286,53 @@ impl AppStreamKatalog {
     }
 }
 
+/// Spätere Quelle gewinnt, aber was ihr fehlt, kommt aus der früheren: Installierte
+/// MetaInfo-Dateien haben oft kein `<pkgname>` und kein Katalogsymbol, beschreiben aber dieselbe
+/// Komponente wie der Paketkatalog.
+fn zusammenfuehren(neu: &mut RohKomponente, alt: &RohKomponente) {
+    for (ziel, quelle) in [
+        (&mut neu.name, &alt.name),
+        (&mut neu.zusammenfassung, &alt.zusammenfassung),
+        (&mut neu.beschreibung, &alt.beschreibung),
+    ] {
+        for (locale, text) in &quelle.0 {
+            if ziel.genau(locale).is_none() {
+                ziel.0.push((locale.clone(), text.clone()));
+            }
+        }
+    }
+    for (locale, woerter) in &alt.schluesselwoerter.0 {
+        if !neu.schluesselwoerter.0.iter().any(|(l, _)| l == locale) {
+            neu.schluesselwoerter.0.push((locale.clone(), woerter.clone()));
+        }
+    }
+    if neu.paketname.is_none() {
+        neu.paketname = alt.paketname.clone();
+    }
+    if neu.origin.is_empty() {
+        neu.origin = alt.origin.clone();
+    }
+    if neu.symbole_cache.is_empty() && neu.symbol_thema.is_none() && neu.symbol_lokal.is_none() {
+        neu.symbol_thema = alt.symbol_thema.clone();
+        neu.symbole_cache = alt.symbole_cache.clone();
+    }
+    if neu.symbole_fern.is_empty() {
+        neu.symbole_fern = alt.symbole_fern.clone();
+    }
+    if neu.bildschirmfotos.is_empty() {
+        neu.bildschirmfotos = alt.bildschirmfotos.clone();
+    }
+    if neu.kategorien.is_empty() {
+        neu.kategorien = alt.kategorien.clone();
+    }
+    if neu.lizenz.is_none() {
+        neu.lizenz = alt.lizenz.clone();
+    }
+    if neu.homepage.is_none() {
+        neu.homepage = alt.homepage.clone();
+    }
+}
+
 /// Sortierschlüssel für Namen: normalisiert, dann Original, dann ID (stabil und eindeutig).
 fn sortierschluessel(a: &Anwendung) -> (String, String, String) {
     (suche::normalisieren(&a.name), a.name.clone(), a.id.clone())
@@ -278,6 +342,14 @@ impl Katalog for AppStreamKatalog {
     fn laden(&mut self) -> Result<Statistik, String> {
         let start = Instant::now();
         let mut bericht = Ladebericht::default();
+        self.themen = symbole::ThemenIndex::aufbauen(&self.konfiguration.themen_verzeichnisse);
+        self.cache_vorhanden = self
+            .konfiguration
+            .symbol_cache_verzeichnisse
+            .iter()
+            .filter(|p| p.is_dir())
+            .cloned()
+            .collect();
         let mut quellen: Vec<String> = Vec::new();
 
         // 1. Alle Quellen lesen; gleiche ID: spätere Quelle gewinnt.
@@ -296,9 +368,10 @@ impl Katalog for AppStreamKatalog {
                 Ok((_kopf, komponenten)) => {
                     gelesen += komponenten.len();
                     quellen.push(format!("{} ({} Komponenten)", pfad.display(), komponenten.len()));
-                    for k in komponenten {
-                        if !nach_id.contains_key(&k.id) {
-                            reihenfolge.push(k.id.clone());
+                    for mut k in komponenten {
+                        match nach_id.get(&k.id) {
+                            None => reihenfolge.push(k.id.clone()),
+                            Some(alt) => zusammenfuehren(&mut k, alt),
                         }
                         nach_id.insert(k.id.clone(), k);
                     }
@@ -433,12 +506,12 @@ impl Katalog for AppStreamKatalog {
     fn symbol_pfad(&self, a: &Anwendung, groesse: u32) -> Option<PathBuf> {
         match &a.symbol {
             Symbol::Keines => None,
-            Symbol::Thema(name) => symbole::thema_pfad(&self.konfiguration.themen_verzeichnisse, name, groesse),
+            Symbol::Thema(name) => self.themen.suchen(name, groesse),
             Symbol::Datei(p) => {
                 // Im Katalog-Cache die gewünschte Größe suchen, sonst die geladene Datei.
                 let z = self.zusatz(a);
                 z.and_then(|z| {
-                    symbole::cache_pfad(&self.konfiguration.symbol_cache_verzeichnisse, &z.origin, &z.symbole_cache, groesse)
+                    symbole::cache_pfad(&self.cache_vorhanden, &z.origin, &z.symbole_cache, groesse)
                 })
                 .or_else(|| p.is_file().then(|| p.clone()))
             }

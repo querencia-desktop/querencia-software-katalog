@@ -90,12 +90,15 @@ pub struct TextBauer {
     listen: Vec<Option<usize>>,
     /// Ob der aktuelle Block ein Listenpunkt ist.
     in_punkt: bool,
+    /// Tiefe innerhalb eines Elements mit eigenem `xml:lang` (fremde Übersetzung mitten in der
+    /// Fassung, kommt bei Ubuntu vor); solange > 0 wird Text verworfen.
+    fremdsprache: usize,
 }
 
 impl TextBauer {
     /// Fügt Text (mit Entitäten) zum aktuellen Block hinzu, Leerraum zusammengezogen.
     pub fn text(&mut self, roh: &str) {
-        if roh.is_empty() {
+        if roh.is_empty() || self.fremdsprache > 0 {
             return;
         }
         let dekodiert = entitaeten_dekodieren(roh);
@@ -107,7 +110,7 @@ impl TextBauer {
             }
             self.aktuell.push_str(wort);
         }
-        if dekodiert.ends_with(char::is_whitespace) && !self.aktuell.is_empty() {
+        if dekodiert.ends_with(char::is_whitespace) && !self.aktuell.is_empty() && !self.aktuell.ends_with(' ') {
             self.aktuell.push(' ');
         }
     }
@@ -115,6 +118,19 @@ impl TextBauer {
     /// Verarbeitet einen Tag-Inhalt ohne spitze Klammern, z. B. `p`, `/p`, `ul`, `li`.
     pub fn tag(&mut self, tag: &str) {
         let schliesst = tag.starts_with('/');
+        let selbstschliessend = tag.ends_with('/');
+        if self.fremdsprache > 0 {
+            if schliesst {
+                self.fremdsprache -= 1;
+            } else if !selbstschliessend {
+                self.fremdsprache += 1;
+            }
+            return;
+        }
+        if !schliesst && !selbstschliessend && tag.contains("xml:lang") {
+            self.fremdsprache = 1;
+            return;
+        }
         let name = tag
             .trim_start_matches('/')
             .split([' ', '\t', '\n', '/'])
@@ -217,6 +233,12 @@ mod tests {
     #[test]
     fn verschachtelte_liste() {
         assert_eq!(markup_zu_text("<ul><li>a<ul><li>b</li></ul></li></ul>"), "• a\n  • b");
+    }
+
+    #[test]
+    fn fremdsprachige_elemente_und_leerraum() {
+        let m = "<p><em>Features:</em><em xml:lang=\"ca\">Característiques:</em><em xml:lang=\"fr\">Fonctions <code>x</code></em></p><ul>\n<li>\n  <em>Eins</em> zwei</li></ul>";
+        assert_eq!(markup_zu_text(m), "Features:\n\n• Eins zwei");
     }
 
     #[test]

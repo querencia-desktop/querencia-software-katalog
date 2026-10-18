@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Installierte MetaInfo zu einer Katalogkomponente: ohne pkgname und Symbol, aber mit deutschem Namen. -->
+<component type="desktop-application">
+  <id>org.example.Spiel.desktop</id>
+  <name>Space Blocks</name>
+  <name xml:lang="de">Weltraumblöcke</name>
+  <summary>Falling blocks in space</summary>
+  <summary xml:lang="de">Fallende Blöcke im Weltraum</summary>
+</component>

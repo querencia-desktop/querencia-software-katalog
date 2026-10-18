@@ -7,6 +7,7 @@
 //! cargo run --release --example katalog-suche -- id org.gnome.gedit.desktop
 //! cargo run --release --example katalog-suche -- paket gedit
 //! cargo run --release --example katalog-suche -- quellen           # gelesene Dateien
+//! cargo run --release --example katalog-suche -- dump              # alle Anwendungen vollständig
 //! ```
 //! Mit `QS_KATALOG_VERZEICHNIS=<pfad>` wird statt der Systempfade nur dieses Verzeichnis
 //! (Katalogdateien und MetaInfo) gelesen.
@@ -54,13 +55,20 @@ fn main() {
             println!("Ausgeblendet: {} anderer Typ, {} ohne Paket, {} Bundle", b.ausgeblendet_typ, b.ausgeblendet_ohne_paket, b.ausgeblendet_bundle);
             println!("Je Kategorie:");
             for (k, n) in &b.je_kategorie {
-                println!("  {:12} {:5}", k.name(), n);
+                println!("  {:20} {:5}", k.name(), n);
             }
             if !b.fehler.is_empty() {
                 println!("Fehler:");
-                for (p, e) in &b.fehler {
-                    println!("  {}: {}", p, e);
+                for (_, e) in &b.fehler {
+                    println!("  {}", e);
                 }
+            }
+        }
+        Some("dump") => {
+            // Alle Anwendungen vollständig, für Vergleiche zwischen Einlesewegen.
+            for a in katalog.alle() {
+                let z = katalog.zusatz(a).expect("zusatz");
+                println!("{:?} | {} | {:?} | {:?} | {:?}", a, z.typ, z.schluesselwoerter, z.symbol_fern_url, z.symbole_cache);
             }
         }
         Some("quellen") => {
@@ -111,7 +119,7 @@ fn main() {
             }
         }
         Some(andere) => {
-            eprintln!("Unbekannter Befehl {:?}. Befehle: statistik, quellen, suche TEXT, kategorie NAME, id ID, paket NAME", andere);
+            eprintln!("Unbekannter Befehl {:?}. Befehle: statistik, quellen, dump, suche TEXT, kategorie NAME, id ID, paket NAME", andere);
             std::process::exit(2);
         }
     }

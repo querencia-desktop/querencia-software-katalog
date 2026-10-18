@@ -4,6 +4,7 @@
 //! gesuchten Pfade sind ein Rückfall und dienen der Statistik (ist überhaupt ein Bild da?).
 //! `remote`-Symbole werden offline nicht geladen; ihre URL steht in `Zusatz::symbol_fern_url`.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use crate::komponente::SymbolDatei;
@@ -34,6 +35,102 @@ pub fn standard_themen_verzeichnisse() -> Vec<PathBuf> {
         v.push(Path::new(&home).join(".local/share/icons/hicolor"));
     }
     v
+}
+
+/// Index aller Themensymbol-Dateien (`<thema>/<g>x<g>/apps/*`, `<thema>/scalable/apps/*`,
+/// `/usr/share/pixmaps/*`). Einmal beim Laden aufgebaut, ersetzt er pro Anwendung Dutzende
+/// `stat`-Aufrufe (gemessen: 177 000 `statx` je Ladevorgang ohne Index).
+#[derive(Clone, Debug, Default)]
+pub struct ThemenIndex {
+    /// Name ohne Endung → (Thema-Rang, Größe; 0 = scalable, u32::MAX = pixmaps, Pfad).
+    dateien: HashMap<String, Vec<(usize, u32, PathBuf)>>,
+}
+
+impl ThemenIndex {
+    /// Liest die Verzeichnisstruktur der Themen und `/usr/share/pixmaps` ein.
+    pub fn aufbauen(themen_verzeichnisse: &[PathBuf]) -> Self {
+        Self::aufbauen_mit_pixmaps(themen_verzeichnisse, Some(Path::new("/usr/share/pixmaps")))
+    }
+
+    /// Wie [`ThemenIndex::aufbauen`], mit wählbarem `pixmaps`-Verzeichnis (Tests: `None`).
+    pub fn aufbauen_mit_pixmaps(themen_verzeichnisse: &[PathBuf], pixmaps: Option<&Path>) -> Self {
+        let mut idx = ThemenIndex::default();
+        for (rang, thema) in themen_verzeichnisse.iter().enumerate() {
+            let Ok(groessen) = std::fs::read_dir(thema) else { continue };
+            for g in groessen.filter_map(Result::ok) {
+                let gname = g.file_name().to_string_lossy().into_owned();
+                let groesse = if gname == "scalable" {
+                    0
+                } else {
+                    match gname.split_once('x').and_then(|(a, _)| a.parse::<u32>().ok()) {
+                        Some(n) if !gname.contains('@') => n,
+                        _ => continue,
+                    }
+                };
+                idx.verzeichnis_lesen(&g.path().join("apps"), rang, groesse);
+            }
+        }
+        if let Some(p) = pixmaps {
+            idx.verzeichnis_lesen(p, themen_verzeichnisse.len(), u32::MAX);
+        }
+        idx
+    }
+
+    fn verzeichnis_lesen(&mut self, verzeichnis: &Path, rang: usize, groesse: u32) {
+        let Ok(dateien) = std::fs::read_dir(verzeichnis) else { return };
+        for d in dateien.filter_map(Result::ok) {
+            let name = d.file_name().to_string_lossy().into_owned();
+            let Some((stamm, endung)) = name.rsplit_once('.') else { continue };
+            if !matches!(endung, "png" | "svg" | "xpm") || (groesse != u32::MAX && endung == "xpm") {
+                continue;
+            }
+            self.dateien.entry(stamm.to_string()).or_default().push((rang, groesse, d.path()));
+        }
+    }
+
+    /// Anzahl indizierter Symbolnamen.
+    pub fn len(&self) -> usize {
+        self.dateien.len()
+    }
+
+    /// Ob der Index leer ist.
+    pub fn is_empty(&self) -> bool {
+        self.dateien.is_empty()
+    }
+
+    /// Beste Datei für ein Themensymbol: Themenreihenfolge zuerst; innerhalb eines Themas die
+    /// gewünschte Größe, dann größere (aufsteigend), dann `scalable`, dann kleinere (absteigend);
+    /// `pixmaps` zuletzt. Absolute Pfade als Name werden direkt geprüft.
+    pub fn suchen(&self, name: &str, groesse: u32) -> Option<PathBuf> {
+        if name.contains('/') {
+            let p = Path::new(name);
+            return (p.is_absolute() && p.is_file()).then(|| p.to_path_buf());
+        }
+        let stamm = name
+            .strip_suffix(".png")
+            .or_else(|| name.strip_suffix(".svg"))
+            .or_else(|| name.strip_suffix(".xpm"))
+            .unwrap_or(name);
+        let kandidaten = self.dateien.get(stamm)?;
+        kandidaten
+            .iter()
+            .min_by_key(|(rang, g, pfad)| {
+                let ordnung = if *g == u32::MAX {
+                    (3, 0)
+                } else if *g == groesse {
+                    (0, 0)
+                } else if *g > groesse {
+                    (1, *g)
+                } else if *g == 0 {
+                    (2, 0)
+                } else {
+                    (2, u32::MAX - *g)
+                };
+                // PNG vor SVG bei gleicher Größe (schneller zu laden).
+                (*rang, ordnung, pfad.extension().is_some_and(|e| e != "png"))
+            })
+            .map(|(_, _, p)| p.clone())
+    }
 }
 
 /// Sucht ein `cached`-Symbol unter `<cache>/<origin>/<BxH>[@skala]/<name>`; bevorzugt die
@@ -79,58 +176,10 @@ pub fn cache_pfad(
     None
 }
 
-/// Sucht ein Themensymbol als Datei: `<thema>/<s>x<s>/apps/<name>.{png,svg,xpm}`, dann
-/// `scalable`, dann andere Größen, zuletzt `/usr/share/pixmaps`.
+/// Sucht ein Themensymbol als Datei (baut dafür einen Index; für viele Abfragen
+/// [`ThemenIndex`] direkt verwenden).
 pub fn thema_pfad(themen_verzeichnisse: &[PathBuf], name: &str, groesse: u32) -> Option<PathBuf> {
-    if name.is_empty() || name.contains('/') {
-        // Absoluter Pfad als „stock“-Name kommt vor (fehlerhafte Desktop-Dateien).
-        let p = Path::new(name);
-        return if p.is_absolute() && p.is_file() { Some(p.to_path_buf()) } else { None };
-    }
-    let mut groessen = vec![groesse];
-    for g in [64u32, 48, 128, 256, 96, 72, 32, 24, 22, 16] {
-        if !groessen.contains(&g) {
-            groessen.push(g);
-        }
-    }
-    let name_ohne_endung = name
-        .strip_suffix(".png")
-        .or_else(|| name.strip_suffix(".svg"))
-        .or_else(|| name.strip_suffix(".xpm"))
-        .unwrap_or(name);
-    for thema in themen_verzeichnisse {
-        for g in &groessen {
-            if *g == groesse || g > &groesse {
-                for endung in ["png", "svg"] {
-                    let p = thema.join(format!("{}x{}/apps/{}.{}", g, g, name_ohne_endung, endung));
-                    if p.is_file() {
-                        return Some(p);
-                    }
-                }
-            }
-        }
-        let p = thema.join(format!("scalable/apps/{}.svg", name_ohne_endung));
-        if p.is_file() {
-            return Some(p);
-        }
-        for g in &groessen {
-            if g < &groesse {
-                for endung in ["png", "svg"] {
-                    let p = thema.join(format!("{}x{}/apps/{}.{}", g, g, name_ohne_endung, endung));
-                    if p.is_file() {
-                        return Some(p);
-                    }
-                }
-            }
-        }
-    }
-    for endung in ["png", "svg", "xpm"] {
-        let p = PathBuf::from(format!("/usr/share/pixmaps/{}.{}", name_ohne_endung, endung));
-        if p.is_file() {
-            return Some(p);
-        }
-    }
-    None
+    ThemenIndex::aufbauen(themen_verzeichnisse).suchen(name, groesse)
 }
 
 #[cfg(test)]
@@ -180,6 +229,9 @@ mod tests {
         assert!(thema_pfad(&v, "bar", 64).unwrap().ends_with("scalable/apps/bar.svg"));
         assert!(thema_pfad(&v, "foo.png", 48).is_some());
         assert_eq!(thema_pfad(&v, "nix-da-ganz-sicher-nicht", 48), None);
+        let idx = ThemenIndex::aufbauen_mit_pixmaps(&v, None);
+        assert_eq!(idx.len(), 2);
+        assert!(idx.suchen("bar", 48).unwrap().ends_with("scalable/apps/bar.svg"));
         let _ = fs::remove_dir_all(&basis);
     }
 }

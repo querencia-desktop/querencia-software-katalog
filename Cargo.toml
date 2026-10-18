@@ -7,9 +7,8 @@ license = "GPL-3.0-or-later"
 publish = false
 
 [dependencies]
-# Gemeinsame Typen; bis SW-1 das Crate liefert, der lokale Spiegel (gleicher Inhalt wie SCHNITTSTELLEN.md).
-# Danach: qs_typen = { path = "../querencia-software-paketkit/qs_typen" }
-qs_typen = { path = "qs_typen_spiegel" }
+# Gemeinsame Typen und das Trait `Katalog` von SW-1 (Commit 637b7b0, 18.10.2026 20:24).
+qs_typen = { path = "../querencia-software-paketkit/qs_typen" }
 roxmltree = "=0.21.1"
 flate2 = "=1.1.10"
 

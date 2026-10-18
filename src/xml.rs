@@ -24,6 +24,10 @@ pub fn lese_datei(pfad: &Path) -> Result<(Quellkopf, Vec<RohKomponente>), String
 
 /// Liest AppStream-XML aus einem Text.
 pub fn lese_text(text: &str) -> Result<(Quellkopf, Vec<RohKomponente>), String> {
+    // `appstreamcli convert` schreibt für leere DEP-11-Quellen eine leere Datei.
+    if text.trim().is_empty() {
+        return Ok((Quellkopf::default(), Vec::new()));
+    }
     let doc = Document::parse(text).map_err(|e| format!("XML: {}", e))?;
     let wurzel = doc.root_element();
     let mut kopf = Quellkopf::default();
@@ -70,6 +74,10 @@ fn innen_markup(n: Node, aus: &mut String) {
         if c.is_text() {
             aus.push_str(&escape(c.text().unwrap_or("")));
         } else if c.is_element() {
+            // Fremdsprachige Elemente mitten in einer Fassung gehören nicht in deren Text.
+            if c.has_attribute(("http://www.w3.org/XML/1998/namespace", "lang")) {
+                continue;
+            }
             let name = c.tag_name().name();
             aus.push('<');
             aus.push_str(name);
@@ -254,6 +262,7 @@ mod tests {
 <keywords xml:lang="de"><keyword>Alpha</keyword></keywords></component>
 <component type="addon"><id>b</id><pkgname>b</pkgname><name>B</name><summary>S</summary><bundle type="snap">b</bundle></component>
 </components>"#;
+        assert_eq!(lese_text("  \n").unwrap().1.len(), 0);
         let (kopf, k) = lese_text(xml).unwrap();
         assert_eq!(kopf.origin, "test");
         assert_eq!(k.len(), 2);

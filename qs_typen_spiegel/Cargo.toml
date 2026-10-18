@@ -1,8 +1,0 @@
-[package]
-name = "qs_typen"
-version = "0.1.0"
-edition = "2021"
-description = "Lokaler Spiegel der gemeinsamen Typen aus SCHNITTSTELLEN.md (bis qs_typen von SW-1 vorliegt)"
-publish = false
-
-[dependencies]
