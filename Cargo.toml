@@ -1,0 +1,21 @@
+[package]
+name = "qs_katalog"
+version = "0.1.0"
+edition = "2021"
+description = "AppStream-Katalog für Querencia Software: Einlesen, Kategorien, Suche, Symbole"
+license = "GPL-3.0-or-later"
+publish = false
+
+[dependencies]
+# Gemeinsame Typen; bis SW-1 das Crate liefert, der lokale Spiegel (gleicher Inhalt wie SCHNITTSTELLEN.md).
+# Danach: qs_typen = { path = "../querencia-software-paketkit/qs_typen" }
+qs_typen = { path = "qs_typen_spiegel" }
+roxmltree = "=0.21.1"
+flate2 = "=1.1.10"
+
+[[example]]
+name = "katalog-suche"
+path = "beispiele/katalog-suche.rs"
+
+[profile.release]
+debug = 1
