@@ -1,8 +1,10 @@
 # qs_katalog – AppStream-Katalog für Querencia Software
 
 AppStream-Katalog für Querencia Software: liest die AppStream-Daten des Systems, ordnet Kategorien zu, sucht und löst Symbole auf (`qs_katalog`). Teil von
-[Querencia Desktop](https://github.com/querencia-desktop/querencia) – einer
+[Querencia Desktop](https://querencialinux.org) – einer
 klassischen Desktopumgebung im GNOME-2-Stil für Wayland (labwc, Rust, GTK 4).
+Wird als Teil von Querencia Software ausgeliefert; Anleitung auf
+<https://querencialinux.org>.
 
 *English summary:* AppStream catalogue of Querencia Software: reads the system's AppStream data, maps categories, searches and resolves icons (`qs_katalog`). Part of Querencia Desktop. Alpha software; documentation is in German.
 
@@ -56,7 +58,6 @@ ohne Beschreibung), wird es aus der früheren übernommen. Eine unlesbare Datei 
 ## Entscheidungen
 
 - **DEP-11-YAML:** eigener Minimalparser (`src/yaml.rs`), kein `appstreamcli convert`, kein Cache.
-  Begründung und Messung im Bericht .
 - **Sichtbar** sind `desktop-application` und `console-application` mit Paketname und ohne
   Snap/Flatpak-Bundle. Konsolenanwendungen: `AppStreamKatalog::konsolenanwendungen()` für die
   Expertenliste; abschaltbar über `Konfiguration::mit_konsolenanwendungen`.
