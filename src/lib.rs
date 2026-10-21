@@ -5,7 +5,7 @@
 //! ab, bietet eine gewichtete Suche mit Umlaut-Toleranz und löst Symbole auf.
 //!
 //! Einstieg: [`AppStreamKatalog::neu`] und das Trait [`Katalog`] aus `qs_typen` (SW-1), beide
-//! nach `~/projects/querencia-software/SCHNITTSTELLEN.md`. Bedeutung der [`Statistik`]-Felder
+//! nach `docs/SCHNITTSTELLEN.md` (Repo querencia-software). Bedeutung der [`Statistik`]-Felder
 //! siehe [`AppStreamKatalog`].
 //!
 //! ```no_run
