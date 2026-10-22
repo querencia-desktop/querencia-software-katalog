@@ -183,7 +183,9 @@ impl<'a> Parser<'a> {
     /// Block auf der Einrückung der aktuellen (nicht leeren) Zeile.
     fn block(&mut self) -> Result<Knoten, YamlFehler> {
         self.ueberspringe_leere();
-        let z = self.aktuell().ok_or_else(|| self.fehler("unerwartetes Ende"))?;
+        let z = self
+            .aktuell()
+            .ok_or_else(|| self.fehler("unerwartetes Ende"))?;
         if ist_listenpunkt(z.inhalt) {
             self.liste(z.einzug)
         } else {
@@ -242,7 +244,10 @@ impl<'a> Parser<'a> {
                 self.pos += 1;
                 self.ueberspringe_leere();
                 let wert = match self.aktuell() {
-                    Some(w) if w.einzug == einzug && (w.inhalt == ":" || w.inhalt.starts_with(": ")) => {
+                    Some(w)
+                        if w.einzug == einzug
+                            && (w.inhalt == ":" || w.inhalt.starts_with(": ")) =>
+                    {
                         let rest = w.inhalt[1..].trim();
                         if rest.is_empty() {
                             self.pos += 1;
@@ -296,7 +301,8 @@ impl<'a> Parser<'a> {
                     iter.next();
                 }
             }
-            let ende = ende.ok_or_else(|| self.fehler("Anführungszeichen im Schlüssel nicht geschlossen"))?;
+            let ende = ende
+                .ok_or_else(|| self.fehler("Anführungszeichen im Schlüssel nicht geschlossen"))?;
             let roh = &inhalt[1..ende];
             let danach = inhalt[ende + 1..].trim_start();
             let rest = danach
@@ -318,7 +324,10 @@ impl<'a> Parser<'a> {
             }
             i += 1;
         }
-        Err(self.fehler(format!("Abbildungseintrag erwartet, gefunden: {:?}", inhalt)))
+        Err(self.fehler(format!(
+            "Abbildungseintrag erwartet, gefunden: {:?}",
+            inhalt
+        )))
     }
 
     /// Wert, der in der aktuellen Zeile (nach Schlüssel oder `- `) beginnt. `einzug` ist die
@@ -397,7 +406,12 @@ impl<'a> Parser<'a> {
         } else {
             ' '
         };
-        if kopf.len() > 3 || kopf.chars().skip(1).any(|c| !matches!(c, '-' | '+' | '1'..='9')) {
+        if kopf.len() > 3
+            || kopf
+                .chars()
+                .skip(1)
+                .any(|c| !matches!(c, '-' | '+' | '1'..='9'))
+        {
             return Err(self.fehler(format!("Blockskalar-Kopf nicht unterstützt: {:?}", kopf)));
         }
         self.pos += 1;
@@ -544,7 +558,8 @@ impl<'a> Parser<'a> {
                                 match u32::from_str_radix(&hex, 16).ok().and_then(char::from_u32) {
                                     Some(ch) => ergebnis.push(ch),
                                     None => {
-                                        return Err(self.fehler(format!("ungültiges Escape \\{}{}", e, hex)))
+                                        return Err(self
+                                            .fehler(format!("ungültiges Escape \\{}{}", e, hex)))
                                     }
                                 }
                             }
@@ -668,9 +683,16 @@ mod tests {
 
     #[test]
     fn abbildung_und_liste() {
-        let k = eins("Type: desktop-application\nCategories:\n- A\n- B\nName:\n  C: Foo\n  de: Fuu\n");
+        let k =
+            eins("Type: desktop-application\nCategories:\n- A\n- B\nName:\n  C: Foo\n  de: Fuu\n");
         assert_eq!(k.feld_text("Type"), Some("desktop-application"));
-        let kat: Vec<_> = k.feld("Categories").unwrap().liste().iter().map(|n| n.text().unwrap()).collect();
+        let kat: Vec<_> = k
+            .feld("Categories")
+            .unwrap()
+            .liste()
+            .iter()
+            .map(|n| n.text().unwrap())
+            .collect();
         assert_eq!(kat, ["A", "B"]);
         assert_eq!(k.feld("Name").unwrap().feld_text("de"), Some("Fuu"));
     }
@@ -691,7 +713,10 @@ mod tests {
     fn gefalteter_blockskalar() {
         let k = eins("Description:\n  C: >-\n    <p>Erste Zeile\n    zweite Zeile.</p>\n\n    <p>Neuer Absatz.</p>\n  de: >-\n    <p>Deutsch</p>\nNext: 1\n");
         let d = k.feld("Description").unwrap();
-        assert_eq!(d.feld_text("C"), Some("<p>Erste Zeile zweite Zeile.</p>\n<p>Neuer Absatz.</p>"));
+        assert_eq!(
+            d.feld_text("C"),
+            Some("<p>Erste Zeile zweite Zeile.</p>\n<p>Neuer Absatz.</p>")
+        );
         assert_eq!(d.feld_text("de"), Some("<p>Deutsch</p>"));
         assert_eq!(k.feld_text("Next"), Some("1"));
     }
@@ -724,7 +749,9 @@ mod tests {
 
     #[test]
     fn mehrere_dokumente() {
-        let d = dokumente("---\nFile: DEP-11\nOrigin: x\n---\nType: a\nID: 1\n---\nType: b\nID: 2\n").unwrap();
+        let d =
+            dokumente("---\nFile: DEP-11\nOrigin: x\n---\nType: a\nID: 1\n---\nType: b\nID: 2\n")
+                .unwrap();
         assert_eq!(d.len(), 3);
         assert_eq!(d[0].feld_text("Origin"), Some("x"));
         assert_eq!(d[2].feld_text("ID"), Some("2"));
@@ -749,9 +776,18 @@ mod tests {
         let k = eins("Screenshots:\n- default: true\n  thumbnails:\n  - url: a\n    width: 1\n  source-image:\n    url: b\n- caption: {}\n  source-image:\n    url: c\n");
         let s = k.feld("Screenshots").unwrap().liste();
         assert_eq!(s.len(), 2);
-        assert_eq!(s[0].feld("source-image").unwrap().feld_text("url"), Some("b"));
-        assert_eq!(s[0].feld("thumbnails").unwrap().liste()[0].feld_text("url"), Some("a"));
-        assert_eq!(s[1].feld("source-image").unwrap().feld_text("url"), Some("c"));
+        assert_eq!(
+            s[0].feld("source-image").unwrap().feld_text("url"),
+            Some("b")
+        );
+        assert_eq!(
+            s[0].feld("thumbnails").unwrap().liste()[0].feld_text("url"),
+            Some("a")
+        );
+        assert_eq!(
+            s[1].feld("source-image").unwrap().feld_text("url"),
+            Some("c")
+        );
     }
 }
 

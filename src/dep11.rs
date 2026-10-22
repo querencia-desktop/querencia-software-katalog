@@ -4,7 +4,9 @@ use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 
-use crate::komponente::{Lokalisiert, Quellkopf, RohKomponente, Schluesselwoerter, SymbolDatei, SymbolFern};
+use crate::komponente::{
+    Lokalisiert, Quellkopf, RohKomponente, Schluesselwoerter, SymbolDatei, SymbolFern,
+};
 use crate::yaml::{self, Knoten};
 
 /// Liest eine DEP-11-Datei (`.yml` oder `.yml.gz`).
@@ -59,21 +61,37 @@ fn lokalisiert(knoten: Option<&Knoten>) -> Lokalisiert {
 }
 
 fn zahl(k: &Knoten, name: &str) -> u32 {
-    k.feld_text(name).and_then(|t| t.trim().parse().ok()).unwrap_or(0)
+    k.feld_text(name)
+        .and_then(|t| t.trim().parse().ok())
+        .unwrap_or(0)
 }
 
 fn komponente(doc: &Knoten, kopf: &Quellkopf) -> Option<RohKomponente> {
     let id = doc.feld_text("ID")?.trim().to_string();
     let mut k = RohKomponente {
-        typ: doc.feld_text("Type").unwrap_or("generic").trim().to_string(),
+        typ: doc
+            .feld_text("Type")
+            .unwrap_or("generic")
+            .trim()
+            .to_string(),
         id,
-        paketname: doc.feld_text("Package").map(|p| p.trim().to_string()).filter(|p| !p.is_empty()),
-        bundle: doc.feld("Bundles").is_some_and(|b| !b.liste().is_empty() || !b.eintraege().is_empty()),
+        paketname: doc
+            .feld_text("Package")
+            .map(|p| p.trim().to_string())
+            .filter(|p| !p.is_empty()),
+        bundle: doc
+            .feld("Bundles")
+            .is_some_and(|b| !b.liste().is_empty() || !b.eintraege().is_empty()),
         name: lokalisiert(doc.feld("Name")),
         zusammenfassung: lokalisiert(doc.feld("Summary")),
         beschreibung: lokalisiert(doc.feld("Description")),
-        lizenz: doc.feld_text("ProjectLicense").map(|s| s.trim().to_string()),
-        homepage: doc.feld("Url").and_then(|u| u.feld_text("homepage")).map(|s| s.trim().to_string()),
+        lizenz: doc
+            .feld_text("ProjectLicense")
+            .map(|s| s.trim().to_string()),
+        homepage: doc
+            .feld("Url")
+            .and_then(|u| u.feld_text("homepage"))
+            .map(|s| s.trim().to_string()),
         origin: kopf.origin.clone(),
         ..RohKomponente::default()
     };
@@ -93,10 +111,19 @@ fn komponente(doc: &Knoten, kopf: &Quellkopf) -> Option<RohKomponente> {
     }
     k.kategorien = doc
         .feld("Categories")
-        .map(|c| c.liste().iter().filter_map(Knoten::text).map(|s| s.trim().to_string()).collect())
+        .map(|c| {
+            c.liste()
+                .iter()
+                .filter_map(Knoten::text)
+                .map(|s| s.trim().to_string())
+                .collect()
+        })
         .unwrap_or_default();
     if let Some(icon) = doc.feld("Icon") {
-        k.symbol_thema = icon.feld_text("stock").map(|s| s.trim().to_string()).filter(|s| !s.is_empty());
+        k.symbol_thema = icon
+            .feld_text("stock")
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
         for c in icon.feld("cached").map(Knoten::liste).unwrap_or(&[]) {
             if let Some(name) = c.feld_text("name") {
                 k.symbole_cache.push(SymbolDatei {

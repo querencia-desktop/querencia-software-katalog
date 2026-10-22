@@ -30,4 +30,3 @@ pub mod yaml;
 
 pub use katalog::{AppStreamKatalog, Konfiguration, Ladebericht, Zusatz};
 pub use qs_typen::{Anwendung, Katalog, Kategorie, Statistik, Symbol};
-

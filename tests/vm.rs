@@ -22,9 +22,22 @@ fn echte_vm_daten() {
     println!("je Kategorie {:?}", b.je_kategorie);
 
     assert!(b.fehler.is_empty(), "Lesefehler: {:?}", b.fehler);
-    assert!((2600..=2700).contains(&s.komponenten), "Komponenten {}", s.komponenten);
-    assert!((2150..=2300).contains(&s.mit_paket), "mit Paket {}", s.mit_paket);
-    assert!(s.deutsch * 100 / s.mit_paket >= 25, "Deutschanteil {} von {}", s.deutsch, s.mit_paket);
+    assert!(
+        (2600..=2700).contains(&s.komponenten),
+        "Komponenten {}",
+        s.komponenten
+    );
+    assert!(
+        (2150..=2300).contains(&s.mit_paket),
+        "mit Paket {}",
+        s.mit_paket
+    );
+    assert!(
+        s.deutsch * 100 / s.mit_paket >= 25,
+        "Deutschanteil {} von {}",
+        s.deutsch,
+        s.mit_paket
+    );
     assert!(s.quellen.len() >= 16);
 
     // Bekannte Einträge.
@@ -35,7 +48,10 @@ fn echte_vm_daten() {
     assert_eq!(gedit.symbol, Symbol::Thema("org.gnome.gedit".into()));
     assert!(k.nach_id("org.gnome.gedit").is_some());
     let gimp = k.suchen("gimp");
-    assert_eq!(gimp.first().and_then(|a| a.paketname.as_deref()), Some("gimp"));
+    assert_eq!(
+        gimp.first().and_then(|a| a.paketname.as_deref()),
+        Some("gimp")
+    );
 
     // Jede Kategorie außer „Sonstiges“ ist gut gefüllt.
     for kat in Kategorie::alle() {
@@ -48,7 +64,11 @@ fn echte_vm_daten() {
     assert!(!k.suchen("büro").is_empty());
     assert_eq!(k.suchen("büro").len(), k.suchen("buero").len());
     // Keine Markup-Reste in Beschreibungen.
-    let reste = k.alle().iter().filter(|a| a.beschreibung.contains("<p>") || a.beschreibung.contains("</li>")).count();
+    let reste = k
+        .alle()
+        .iter()
+        .filter(|a| a.beschreibung.contains("<p>") || a.beschreibung.contains("</li>"))
+        .count();
     assert_eq!(reste, 0);
     // Ladezeit: Ziel < 2 s im Release-Build; im Debug-Build großzügiger.
     let grenze = if cfg!(debug_assertions) { 15.0 } else { 2.0 };

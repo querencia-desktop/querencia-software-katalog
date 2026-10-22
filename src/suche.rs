@@ -58,7 +58,10 @@ pub fn normalisieren(text: &str) -> String {
 /// Faltet die Umschrift weiter: `ae`/`oe`/`ue` → `a`/`o`/`u`. Damit findet die Rückfallsuche auch
 /// „buro“ für „Büro“ (Tastatur ohne Umlaute, ohne Umschrift getippt).
 pub fn falten(normalisiert: &str) -> String {
-    normalisiert.replace("ae", "a").replace("oe", "o").replace("ue", "u")
+    normalisiert
+        .replace("ae", "a")
+        .replace("oe", "o")
+        .replace("ue", "u")
 }
 
 /// Vorbereitete Suchfelder einer Anwendung (alle normalisiert).
@@ -94,7 +97,10 @@ pub const GEWICHT_NAME_GENAU: u32 = 128;
 
 /// Bewertet eine Anwendung gegen einen bereits normalisierten Suchtext. `None` = kein Treffer.
 pub fn bewerten(felder: &Suchfelder, suchtext_normalisiert: &str) -> Option<u32> {
-    let woerter: Vec<&str> = suchtext_normalisiert.split(' ').filter(|w| !w.is_empty()).collect();
+    let woerter: Vec<&str> = suchtext_normalisiert
+        .split(' ')
+        .filter(|w| !w.is_empty())
+        .collect();
     if woerter.is_empty() {
         return None;
     }
@@ -107,7 +113,10 @@ pub fn bewerten(felder: &Suchfelder, suchtext_normalisiert: &str) -> Option<u32>
             bestes = GEWICHT_NAME_ENTHAELT;
         }
         if bestes < GEWICHT_SCHLUESSELWORT
-            && felder.schluesselwoerter.iter().any(|k| k.starts_with(wort) || k.contains(wort))
+            && felder
+                .schluesselwoerter
+                .iter()
+                .any(|k| k.starts_with(wort) || k.contains(wort))
         {
             bestes = GEWICHT_SCHLUESSELWORT;
         }
@@ -137,7 +146,10 @@ mod tests {
 
     #[test]
     fn umlaute_und_akzente() {
-        assert_eq!(normalisieren("Büro-Übersicht  Straße"), "buero-uebersicht strasse");
+        assert_eq!(
+            normalisieren("Büro-Übersicht  Straße"),
+            "buero-uebersicht strasse"
+        );
         assert_eq!(normalisieren("Éditeur"), "editeur");
         assert_eq!(normalisieren("  GIMP "), "gimp");
     }
@@ -163,8 +175,14 @@ mod tests {
         assert_eq!(bewerten(&f, "notizen"), Some(GEWICHT_ZUSAMMENFASSUNG));
         assert_eq!(bewerten(&f, "gedit"), Some(GEWICHT_PAKETNAME));
         assert_eq!(bewerten(&f, "bearbeiten"), Some(GEWICHT_BESCHREIBUNG));
-        assert_eq!(bewerten(&f, "texteditor"), Some(GEWICHT_NAME_PRAEFIX + GEWICHT_NAME_GENAU));
-        assert_eq!(bewerten(&f, "text notizen"), Some(GEWICHT_NAME_PRAEFIX + GEWICHT_ZUSAMMENFASSUNG));
+        assert_eq!(
+            bewerten(&f, "texteditor"),
+            Some(GEWICHT_NAME_PRAEFIX + GEWICHT_NAME_GENAU)
+        );
+        assert_eq!(
+            bewerten(&f, "text notizen"),
+            Some(GEWICHT_NAME_PRAEFIX + GEWICHT_ZUSAMMENFASSUNG)
+        );
         assert_eq!(bewerten(&f, "text fehltganz"), None);
         assert_eq!(bewerten(&f, ""), None);
     }

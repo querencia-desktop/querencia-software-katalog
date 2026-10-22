@@ -56,13 +56,18 @@ impl ThemenIndex {
     pub fn aufbauen_mit_pixmaps(themen_verzeichnisse: &[PathBuf], pixmaps: Option<&Path>) -> Self {
         let mut idx = ThemenIndex::default();
         for (rang, thema) in themen_verzeichnisse.iter().enumerate() {
-            let Ok(groessen) = std::fs::read_dir(thema) else { continue };
+            let Ok(groessen) = std::fs::read_dir(thema) else {
+                continue;
+            };
             for g in groessen.filter_map(Result::ok) {
                 let gname = g.file_name().to_string_lossy().into_owned();
                 let groesse = if gname == "scalable" {
                     0
                 } else {
-                    match gname.split_once('x').and_then(|(a, _)| a.parse::<u32>().ok()) {
+                    match gname
+                        .split_once('x')
+                        .and_then(|(a, _)| a.parse::<u32>().ok())
+                    {
                         Some(n) if !gname.contains('@') => n,
                         _ => continue,
                     }
@@ -77,14 +82,22 @@ impl ThemenIndex {
     }
 
     fn verzeichnis_lesen(&mut self, verzeichnis: &Path, rang: usize, groesse: u32) {
-        let Ok(dateien) = std::fs::read_dir(verzeichnis) else { return };
+        let Ok(dateien) = std::fs::read_dir(verzeichnis) else {
+            return;
+        };
         for d in dateien.filter_map(Result::ok) {
             let name = d.file_name().to_string_lossy().into_owned();
-            let Some((stamm, endung)) = name.rsplit_once('.') else { continue };
-            if !matches!(endung, "png" | "svg" | "xpm") || (groesse != u32::MAX && endung == "xpm") {
+            let Some((stamm, endung)) = name.rsplit_once('.') else {
+                continue;
+            };
+            if !matches!(endung, "png" | "svg" | "xpm") || (groesse != u32::MAX && endung == "xpm")
+            {
                 continue;
             }
-            self.dateien.entry(stamm.to_string()).or_default().push((rang, groesse, d.path()));
+            self.dateien
+                .entry(stamm.to_string())
+                .or_default()
+                .push((rang, groesse, d.path()));
         }
     }
 
@@ -188,7 +201,11 @@ mod tests {
     use std::fs;
 
     fn testverzeichnis(name: &str) -> PathBuf {
-        let p = std::env::temp_dir().join(format!("qs_katalog_symbole_{}_{}", std::process::id(), name));
+        let p = std::env::temp_dir().join(format!(
+            "qs_katalog_symbole_{}_{}",
+            std::process::id(),
+            name
+        ));
         let _ = fs::remove_dir_all(&p);
         fs::create_dir_all(&p).unwrap();
         p
@@ -203,15 +220,36 @@ mod tests {
             fs::write(d.join("a.png"), b"x").unwrap();
         }
         let symbole = vec![
-            SymbolDatei { name: "a.png".into(), breite: 48, hoehe: 48, skala: 1 },
-            SymbolDatei { name: "a.png".into(), breite: 64, hoehe: 64, skala: 1 },
-            SymbolDatei { name: "a.png".into(), breite: 128, hoehe: 128, skala: 1 },
+            SymbolDatei {
+                name: "a.png".into(),
+                breite: 48,
+                hoehe: 48,
+                skala: 1,
+            },
+            SymbolDatei {
+                name: "a.png".into(),
+                breite: 64,
+                hoehe: 64,
+                skala: 1,
+            },
+            SymbolDatei {
+                name: "a.png".into(),
+                breite: 128,
+                hoehe: 128,
+                skala: 1,
+            },
         ];
         let v = vec![basis.clone()];
-        assert!(cache_pfad(&v, "test-origin", &symbole, 64).unwrap().ends_with("64x64/a.png"));
-        assert!(cache_pfad(&v, "test-origin", &symbole, 48).unwrap().ends_with("48x48/a.png"));
+        assert!(cache_pfad(&v, "test-origin", &symbole, 64)
+            .unwrap()
+            .ends_with("64x64/a.png"));
+        assert!(cache_pfad(&v, "test-origin", &symbole, 48)
+            .unwrap()
+            .ends_with("48x48/a.png"));
         // 96 fehlt → nächstgrößere 128
-        assert!(cache_pfad(&v, "test-origin", &symbole, 96).unwrap().ends_with("128x128/a.png"));
+        assert!(cache_pfad(&v, "test-origin", &symbole, 96)
+            .unwrap()
+            .ends_with("128x128/a.png"));
         assert_eq!(cache_pfad(&v, "anderer-origin", &symbole, 64), None);
         let _ = fs::remove_dir_all(&basis);
     }
@@ -224,14 +262,23 @@ mod tests {
         fs::write(basis.join("48x48/apps/foo.png"), b"x").unwrap();
         fs::write(basis.join("scalable/apps/bar.svg"), b"x").unwrap();
         let v = vec![basis.clone()];
-        assert!(thema_pfad(&v, "foo", 48).unwrap().ends_with("48x48/apps/foo.png"));
-        assert!(thema_pfad(&v, "foo", 64).unwrap().ends_with("48x48/apps/foo.png"));
-        assert!(thema_pfad(&v, "bar", 64).unwrap().ends_with("scalable/apps/bar.svg"));
+        assert!(thema_pfad(&v, "foo", 48)
+            .unwrap()
+            .ends_with("48x48/apps/foo.png"));
+        assert!(thema_pfad(&v, "foo", 64)
+            .unwrap()
+            .ends_with("48x48/apps/foo.png"));
+        assert!(thema_pfad(&v, "bar", 64)
+            .unwrap()
+            .ends_with("scalable/apps/bar.svg"));
         assert!(thema_pfad(&v, "foo.png", 48).is_some());
         assert_eq!(thema_pfad(&v, "nix-da-ganz-sicher-nicht", 48), None);
         let idx = ThemenIndex::aufbauen_mit_pixmaps(&v, None);
         assert_eq!(idx.len(), 2);
-        assert!(idx.suchen("bar", 48).unwrap().ends_with("scalable/apps/bar.svg"));
+        assert!(idx
+            .suchen("bar", 48)
+            .unwrap()
+            .ends_with("scalable/apps/bar.svg"));
         let _ = fs::remove_dir_all(&basis);
     }
 }

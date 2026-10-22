@@ -155,8 +155,20 @@ pub const ABBILDUNG: &[(&str, &[Kategorie])] = &[
 /// Marken, die keine Kategorie sind (Toolkit, Umgebung); sie lösen kein „Sonstiges“ aus,
 /// wenn daneben echte Kategorien stehen, zählen aber auch nicht als Treffer.
 pub const KEINE_KATEGORIE: &[&str] = &[
-    "GTK", "Qt", "KDE", "GNOME", "XFCE", "MATE", "Cinnamon", "LXDE", "LXQt", "Core", "Motif", "Java",
-    "ConsoleOnly", "X-Unknown",
+    "GTK",
+    "Qt",
+    "KDE",
+    "GNOME",
+    "XFCE",
+    "MATE",
+    "Cinnamon",
+    "LXDE",
+    "LXQt",
+    "Core",
+    "Motif",
+    "Java",
+    "ConsoleOnly",
+    "X-Unknown",
 ];
 
 /// Querencia-Kategorien zu einem Freedesktop-Namen (leer, wenn unbekannt oder keine Kategorie).
@@ -185,7 +197,11 @@ pub fn zuordnen<S: AsRef<str>>(freedesktop: &[S]) -> Vec<Kategorie> {
         return vec![Sonstiges];
     }
     // Anzeigereihenfolge wie `Kategorie::alle()`.
-    let mut sortiert: Vec<Kategorie> = Kategorie::alle().iter().copied().filter(|k| treffer.contains(k)).collect();
+    let mut sortiert: Vec<Kategorie> = Kategorie::alle()
+        .iter()
+        .copied()
+        .filter(|k| treffer.contains(k))
+        .collect();
     if sortiert.is_empty() {
         sortiert.push(Sonstiges);
     }
@@ -213,7 +229,10 @@ mod tests {
 
     #[test]
     fn mehrfach_und_reihenfolge() {
-        assert_eq!(zuordnen(&["Development", "Database", "Office"]), vec![Buero, Entwicklung]);
+        assert_eq!(
+            zuordnen(&["Development", "Database", "Office"]),
+            vec![Buero, Entwicklung]
+        );
         assert_eq!(zuordnen(&["Game", "Utility"]), vec![Zubehoer, Spiele]);
     }
 
@@ -236,7 +255,9 @@ mod tests {
         for (i, (name, ziel)) in ABBILDUNG.iter().enumerate() {
             assert!(!ziel.is_empty(), "{} ohne Ziel", name);
             assert!(
-                !ABBILDUNG[..i].iter().any(|(n, _)| n.eq_ignore_ascii_case(name)),
+                !ABBILDUNG[..i]
+                    .iter()
+                    .any(|(n, _)| n.eq_ignore_ascii_case(name)),
                 "{} doppelt in der Tabelle",
                 name
             );
