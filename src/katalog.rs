@@ -15,7 +15,7 @@ use crate::{beschreibung, dep11, kategorien, symbole, xml};
 /// Höchstzahl der Suchtreffer.
 pub const MAX_TREFFER: usize = 200;
 
-/// Woher gelesen wird. [`Konfiguration::system`] entspricht SCHNITTSTELLEN.md; Tests setzen
+/// Woher gelesen wird. [`Konfiguration::system`] entspricht schnittstellen.md; Tests setzen
 /// eigene Verzeichnisse.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Konfiguration {
@@ -33,7 +33,7 @@ pub struct Konfiguration {
 }
 
 impl Konfiguration {
-    /// Die Systempfade aus SCHNITTSTELLEN.md.
+    /// Die Systempfade aus schnittstellen.md.
     pub fn system() -> Self {
         let home = std::env::var_os("HOME").map(PathBuf::from);
         let mut metainfo = vec![PathBuf::from("/usr/share/metainfo")];

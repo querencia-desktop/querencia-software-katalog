@@ -1,4 +1,4 @@
-//! Integrationstest gegen die echten AppStream-Daten der VM (entwicklungs-vm).
+//! Integrationstest gegen die echten AppStream-Daten einer Test-VM.
 //!
 //! Läuft nur auf Anforderung: `cargo test --release --test vm -- --ignored --nocapture`
 //! oder `skripte/vm-pruefung.sh`. Erwartung vom 18.10.2026: 2634 Komponenten

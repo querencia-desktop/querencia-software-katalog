@@ -1,16 +1,44 @@
 # qs_katalog – AppStream-Katalog für Querencia Software
 
+AppStream-Katalog für Querencia Software: liest die AppStream-Daten des Systems, ordnet Kategorien zu, sucht und löst Symbole auf (`qs_katalog`). Teil von
+[Querencia Desktop](https://querencialinux.org) – einer
+klassischen Desktopumgebung im GNOME-2-Stil für Wayland (labwc, Rust, GTK 4).
+Wird als Teil von Querencia Software ausgeliefert; Anleitung auf
+<https://querencialinux.org>.
+
+*English summary:* AppStream catalogue of Querencia Software: reads the system's AppStream data, maps categories, searches and resolves icons (`qs_katalog`). Part of Querencia Desktop. Alpha software; documentation is in German.
+
+> **Alpha.** Version 0.1.0 (Tag `katalog/0.1.0`). Keine Sicherheits- oder Datenverlustgarantie.
+
+## Zusammenspiel der Repos
+
+Die Bausteine von Querencia Software liegen in vier Repos nebeneinander und
+binden sich über Pfadabhängigkeiten ein. Zum Bauen und Prüfen alle vier in
+denselben Ordner klonen:
+
+```bash
+for r in querencia-software querencia-software-paketkit querencia-software-katalog querencia-software-transaktion; do
+  git clone https://github.com/querencia-desktop/$r.git
+done
+```
+
+Die Kennungen SW-1 bis SW-4 in Kommentaren bezeichnen die Teilprojekte:
+SW-1 `querencia-software-paketkit`, SW-2 `querencia-software-katalog`,
+SW-3 die Oberfläche in `querencia-software`, SW-4 `querencia-software-transaktion`.
+Die gemeinsame Schnittstelle beschreibt `docs/schnittstellen.md` in
+`querencia-software`.
+
 Bibliothek (SW-2) für die Oberfläche „Querencia Software“ (SW-3). Liest die AppStream-Daten des
 Systems, zeigt nur installierbare Anwendungen mit Debian-Paket, bildet die Freedesktop-Kategorien
 auf die zehn Querencia-Kategorien ab, sucht gewichtet und umlauttolerant und löst Symbole auf.
-Schnittstelle: das Trait `qs_typen::Katalog` aus `~/projects/querencia-software/SCHNITTSTELLEN.md`,
+Schnittstelle: das Trait `qs_typen::Katalog` aus `docs/schnittstellen.md` in `querencia-software`,
 implementiert von `qs_katalog::AppStreamKatalog`.
 
 ```rust
 use qs_katalog::{AppStreamKatalog, Katalog, Kategorie};
 
 let mut katalog = AppStreamKatalog::neu();          // Systempfade
-let statistik = katalog.laden()?;                    // ≈ 0,3 s auf entwicklungs-vm, im Hintergrund-Thread rufen
+let statistik = katalog.laden()?;                    // ≈ 0,3 s auf der Entwicklungsmaschine, im Hintergrund-Thread rufen
 let buero = katalog.kategorie(Kategorie::Buero);     // nach Name sortiert
 let treffer = katalog.suchen("büro");                // höchstens 200, nach Gewicht
 let gedit = katalog.nach_paket("gedit");
@@ -30,7 +58,6 @@ ohne Beschreibung), wird es aus der früheren übernommen. Eine unlesbare Datei 
 ## Entscheidungen
 
 - **DEP-11-YAML:** eigener Minimalparser (`src/yaml.rs`), kein `appstreamcli convert`, kein Cache.
-  Begründung und Messung im Bericht .
 - **Sichtbar** sind `desktop-application` und `console-application` mit Paketname und ohne
   Snap/Flatpak-Bundle. Konsolenanwendungen: `AppStreamKatalog::konsolenanwendungen()` für die
   Expertenliste; abschaltbar über `Konfiguration::mit_konsolenanwendungen`.
@@ -79,3 +106,17 @@ skripte/vm-pruefung.sh                                # echte VM: Integrationste
 
 `qs_typen` (Pfad `../querencia-software-paketkit/qs_typen`, SW-1), `roxmltree 0.21.1`,
 `flate2 1.1.10`. Alles `--offline` aus dem Cargo-Cache.
+
+## Lizenz
+
+GPL-3.0-or-later, siehe [LICENSE](LICENSE). Copyright 2026 Querencia Desktop
+contributors; Urheberhinweis in [COPYRIGHT](COPYRIGHT). Der Wechsel der Bausteine
+auf „MIT OR Apache-2.0“ ist geplant, aber noch nicht vollzogen.
+
+Name und Logo „Querencia“ sind keine freien Inhalte: [MARKE.md](MARKE.md).
+
+## Fehler melden
+
+Fehler, Wünsche und Fragen zu Querencia gehen an die gemeinsame Meldestelle:
+<https://github.com/querencia-desktop/querencia/issues/new/choose>.
+Sicherheitslücken bitte nicht öffentlich melden, siehe [SECURITY.md](SECURITY.md).
