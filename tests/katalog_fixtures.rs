@@ -5,7 +5,9 @@ use std::path::PathBuf;
 use qs_katalog::{AppStreamKatalog, Katalog, Kategorie, Konfiguration, Symbol};
 
 fn fixture(unter: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures").join(unter)
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures")
+        .join(unter)
 }
 
 fn geladen() -> (AppStreamKatalog, qs_katalog::Statistik) {
@@ -27,13 +29,22 @@ fn zaehlung_und_filter() {
     // gemeldet, nicht fatal).
     assert_eq!(s.komponenten, 12);
     // Sichtbar: Notizen, Büroklammer, Spiel, Fremdes, Zeilenwerkzeug, Wörterbuch, English Only.
-    assert_eq!(s.mit_paket, 7, "{:?}", k.alle().iter().map(|a| &a.id).collect::<Vec<_>>());
+    assert_eq!(
+        s.mit_paket,
+        7,
+        "{:?}",
+        k.alle().iter().map(|a| &a.id).collect::<Vec<_>>()
+    );
     let b = k.ladebericht();
     assert_eq!(b.ausgeblendet_bundle, 1);
     assert_eq!(b.ausgeblendet_ohne_paket, 2); // YAML ohne Package + XML ohne pkgname
     assert_eq!(b.ausgeblendet_typ, 2); // font + addon
     assert_eq!(b.konsolenanwendungen, 1);
-    assert_eq!(b.fehler.len(), 1, "kaputte MetaInfo-Datei muss gemeldet werden");
+    assert_eq!(
+        b.fehler.len(),
+        1,
+        "kaputte MetaInfo-Datei muss gemeldet werden"
+    );
     assert!(b.fehler[0].0.ends_with("kaputt.metainfo.xml"));
     assert_eq!(s.quellen.len(), 5);
     assert!(k.nach_id("org.example.SnapApp.desktop").is_none());
@@ -110,36 +121,64 @@ fn felder_der_anwendung() {
     assert_eq!(n.paketname.as_deref(), Some("notizen"));
     assert_eq!(n.lizenz.as_deref(), Some("GPL-3.0+"));
     assert_eq!(n.homepage.as_deref(), Some("https://notizen.example"));
-    assert_eq!(n.bildschirmfotos, ["https://medien.example/media/n/o/shot.png"]);
+    assert_eq!(
+        n.bildschirmfotos,
+        ["https://medien.example/media/n/o/shot.png"]
+    );
     // nach_id auch ohne ".desktop"
     assert_eq!(k.nach_id("org.example.Notizen").unwrap().id, n.id);
     let z = k.zusatz(n).unwrap();
     assert_eq!(z.typ, "desktop-application");
     assert_eq!(z.origin, "test-origin");
     assert_eq!(z.schluesselwoerter, ["Merkzettel", "Gedächtnis", "memo"]);
-    assert_eq!(z.symbol_fern_url.as_deref(), Some("https://medien.example/media/n/o/notizen.png"));
+    assert_eq!(
+        z.symbol_fern_url.as_deref(),
+        Some("https://medien.example/media/n/o/notizen.png")
+    );
     assert!(k.nach_paket("gibtesnicht").is_none());
 }
 
 #[test]
 fn kategorien_zuordnung() {
     let (k, _) = geladen();
-    assert_eq!(k.nach_paket("notizen").unwrap().kategorien, [Kategorie::Zubehoer]);
+    assert_eq!(
+        k.nach_paket("notizen").unwrap().kategorien,
+        [Kategorie::Zubehoer]
+    );
     assert_eq!(
         k.nach_paket("bueroklammer").unwrap().kategorien,
         [Kategorie::Buero, Kategorie::Entwicklung]
     );
-    assert_eq!(k.nach_paket("spiel").unwrap().kategorien, [Kategorie::Spiele]);
-    assert_eq!(k.nach_paket("fremd").unwrap().kategorien, [Kategorie::Sonstiges]);
-    assert_eq!(k.nach_paket("zeilenwerkzeug").unwrap().kategorien, [Kategorie::System]);
-    assert_eq!(k.nach_paket("deutsch-app").unwrap().kategorien, [Kategorie::Zubehoer, Kategorie::Bildung]);
-    assert_eq!(k.nach_paket("englisch-app").unwrap().kategorien, [Kategorie::Internet]);
+    assert_eq!(
+        k.nach_paket("spiel").unwrap().kategorien,
+        [Kategorie::Spiele]
+    );
+    assert_eq!(
+        k.nach_paket("fremd").unwrap().kategorien,
+        [Kategorie::Sonstiges]
+    );
+    assert_eq!(
+        k.nach_paket("zeilenwerkzeug").unwrap().kategorien,
+        [Kategorie::System]
+    );
+    assert_eq!(
+        k.nach_paket("deutsch-app").unwrap().kategorien,
+        [Kategorie::Zubehoer, Kategorie::Bildung]
+    );
+    assert_eq!(
+        k.nach_paket("englisch-app").unwrap().kategorien,
+        [Kategorie::Internet]
+    );
 }
 
 #[test]
 fn kategorie_liste_sortiert_nach_name() {
     let (k, _) = geladen();
-    let namen: Vec<&str> = k.kategorie(Kategorie::Zubehoer).iter().map(|a| a.name.as_str()).collect();
+    let namen: Vec<&str> = k
+        .kategorie(Kategorie::Zubehoer)
+        .iter()
+        .map(|a| a.name.as_str())
+        .collect();
     assert_eq!(namen, ["Notizen", "Wörterbuch"]);
     let namen: Vec<&str> = k.alle().iter().map(|a| a.name.as_str()).collect();
     let mut sortiert = namen.clone();
@@ -151,14 +190,32 @@ fn kategorie_liste_sortiert_nach_name() {
 #[test]
 fn suche_mit_umlauten() {
     let (k, _) = geladen();
-    for text in ["Büroklammer", "bueroklammer", "BÜRO", "buero", "buro", "Büro"] {
+    for text in [
+        "Büroklammer",
+        "bueroklammer",
+        "BÜRO",
+        "buero",
+        "buro",
+        "Büro",
+    ] {
         let t = k.suchen(text);
-        assert_eq!(t.first().map(|a| a.id.as_str()), Some("org.example.Buero.desktop"), "Suche {:?}: {:?}", text, t.len());
+        assert_eq!(
+            t.first().map(|a| a.id.as_str()),
+            Some("org.example.Buero.desktop"),
+            "Suche {:?}: {:?}",
+            text,
+            t.len()
+        );
     }
     // ä/ae, ö/oe: „Wörterbuch“ über Umschrift und ohne Umlaut
     for text in ["wörter", "woerter", "WOERTERBUCH", "worter"] {
         let t = k.suchen(text);
-        assert_eq!(t.first().map(|a| a.paketname.as_deref()), Some(Some("deutsch-app")), "Suche {:?}", text);
+        assert_eq!(
+            t.first().map(|a| a.paketname.as_deref()),
+            Some(Some("deutsch-app")),
+            "Suche {:?}",
+            text
+        );
     }
     // Schlüsselwort mit Umlaut
     let t = k.suchen("gedaechtnis");
@@ -175,7 +232,10 @@ fn suche_gewichtung_und_stabilitaet() {
     // Schlüsselwort „memo“ (C-Fassung) findet Notizen.
     assert_eq!(k.suchen("memo")[0].paketname.as_deref(), Some("notizen"));
     // Paketname: „zeilenwerkzeug“ ist auch der Name; „fremd“ trifft Paketname/Name.
-    assert_eq!(k.suchen("zeilen")[0].paketname.as_deref(), Some("zeilenwerkzeug"));
+    assert_eq!(
+        k.suchen("zeilen")[0].paketname.as_deref(),
+        Some("zeilenwerkzeug")
+    );
     // Mehrere Wörter müssen alle treffen.
     assert_eq!(k.suchen("weltraum").len(), 1);
     assert_eq!(k.suchen("fallende bloecke").len(), 1);
@@ -226,9 +286,19 @@ fn symbole() {
     assert_eq!(k.symbol_pfad(n, 48), None);
     // Cache-Symbol: Datei in der gewünschten Größe.
     let b = k.nach_paket("bueroklammer").unwrap();
-    assert!(matches!(&b.symbol, Symbol::Datei(p) if p.ends_with("test-origin/64x64/buero_buero.png")), "{:?}", b.symbol);
-    assert!(k.symbol_pfad(b, 48).unwrap().ends_with("test-origin/48x48/buero_buero.png"));
-    assert!(k.symbol_pfad(b, 64).unwrap().ends_with("test-origin/64x64/buero_buero.png"));
+    assert!(
+        matches!(&b.symbol, Symbol::Datei(p) if p.ends_with("test-origin/64x64/buero_buero.png")),
+        "{:?}",
+        b.symbol
+    );
+    assert!(k
+        .symbol_pfad(b, 48)
+        .unwrap()
+        .ends_with("test-origin/48x48/buero_buero.png"));
+    assert!(k
+        .symbol_pfad(b, 64)
+        .unwrap()
+        .ends_with("test-origin/64x64/buero_buero.png"));
     // Kein Symbol.
     let f = k.nach_paket("fremd").unwrap();
     assert_eq!(f.symbol, Symbol::Keines);
@@ -253,12 +323,21 @@ fn leere_quellen_sind_ein_fehler() {
 fn spaetere_quelle_ueberschreibt() {
     let (k, _) = geladen();
     // Dieselbe ID in zwei Dateien: die später gelesene gewinnt.
-    let verzeichnis = std::env::temp_dir().join(format!("qs_katalog_dubletten_{}", std::process::id()));
+    let verzeichnis =
+        std::env::temp_dir().join(format!("qs_katalog_dubletten_{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&verzeichnis);
     std::fs::create_dir_all(&verzeichnis).unwrap();
     let kopf = "---\nFile: DEP-11\nVersion: '1.0'\nOrigin: o\n---\nType: desktop-application\nID: a.desktop\nPackage: a\nSummary:\n  C: s\nName:\n  C: ";
-    std::fs::write(verzeichnis.join("archive_dists_resolute_main.yml"), format!("{kopf}Alt\n")).unwrap();
-    std::fs::write(verzeichnis.join("archive_dists_resolute-updates_main.yml"), format!("{kopf}Neu\n")).unwrap();
+    std::fs::write(
+        verzeichnis.join("archive_dists_resolute_main.yml"),
+        format!("{kopf}Alt\n"),
+    )
+    .unwrap();
+    std::fs::write(
+        verzeichnis.join("archive_dists_resolute-updates_main.yml"),
+        format!("{kopf}Neu\n"),
+    )
+    .unwrap();
     let mut k2 = AppStreamKatalog::mit_konfiguration(Konfiguration {
         katalog_verzeichnisse: vec![verzeichnis.clone()],
         metainfo_verzeichnisse: vec![],

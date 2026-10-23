@@ -25,13 +25,13 @@ done
 Die Kennungen SW-1 bis SW-4 in Kommentaren bezeichnen die Teilprojekte:
 SW-1 `querencia-software-paketkit`, SW-2 `querencia-software-katalog`,
 SW-3 die Oberfläche in `querencia-software`, SW-4 `querencia-software-transaktion`.
-Die gemeinsame Schnittstelle beschreibt `docs/SCHNITTSTELLEN.md` in
+Die gemeinsame Schnittstelle beschreibt `docs/schnittstellen.md` in
 `querencia-software`.
 
 Bibliothek (SW-2) für die Oberfläche „Querencia Software“ (SW-3). Liest die AppStream-Daten des
 Systems, zeigt nur installierbare Anwendungen mit Debian-Paket, bildet die Freedesktop-Kategorien
 auf die zehn Querencia-Kategorien ab, sucht gewichtet und umlauttolerant und löst Symbole auf.
-Schnittstelle: das Trait `qs_typen::Katalog` aus `docs/SCHNITTSTELLEN.md` in `querencia-software`,
+Schnittstelle: das Trait `qs_typen::Katalog` aus `docs/schnittstellen.md` in `querencia-software`,
 implementiert von `qs_katalog::AppStreamKatalog`.
 
 ```rust

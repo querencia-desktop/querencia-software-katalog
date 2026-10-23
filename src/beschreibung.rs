@@ -53,7 +53,9 @@ pub fn entitaeten_dekodieren(text: &str) -> String {
                     "apos" => Some('\''),
                     "nbsp" => Some('\u{a0}'),
                     n if n.starts_with("#x") || n.starts_with("#X") => {
-                        u32::from_str_radix(&n[2..], 16).ok().and_then(char::from_u32)
+                        u32::from_str_radix(&n[2..], 16)
+                            .ok()
+                            .and_then(char::from_u32)
                     }
                     n if n.starts_with('#') => n[1..].parse::<u32>().ok().and_then(char::from_u32),
                     _ => None,
@@ -110,7 +112,10 @@ impl TextBauer {
             }
             self.aktuell.push_str(wort);
         }
-        if dekodiert.ends_with(char::is_whitespace) && !self.aktuell.is_empty() && !self.aktuell.ends_with(' ') {
+        if dekodiert.ends_with(char::is_whitespace)
+            && !self.aktuell.is_empty()
+            && !self.aktuell.ends_with(' ')
+        {
             self.aktuell.push(' ');
         }
     }
@@ -174,7 +179,10 @@ impl TextBauer {
     fn block_abschliessen(&mut self) {
         let text = self.aktuell.trim_end().to_string();
         let inhalt = text.trim_start();
-        let leer = inhalt.is_empty() || inhalt.trim_end_matches(|c: char| c == '•' || c == '.' || c.is_ascii_digit()).is_empty();
+        let leer = inhalt.is_empty()
+            || inhalt
+                .trim_end_matches(|c: char| c == '•' || c == '.' || c.is_ascii_digit())
+                .is_empty();
         if !leer {
             self.bloecke.push((self.in_punkt, text));
         }
@@ -203,7 +211,12 @@ impl TextBauer {
 }
 
 fn punkt_eingerueckt(text: &str) -> bool {
-    text.trim_start().starts_with('•') || text.trim_start().chars().next().is_some_and(|c| c.is_ascii_digit())
+    text.trim_start().starts_with('•')
+        || text
+            .trim_start()
+            .chars()
+            .next()
+            .is_some_and(|c| c.is_ascii_digit())
 }
 
 #[cfg(test)]
@@ -221,18 +234,27 @@ mod tests {
 
     #[test]
     fn geordnete_liste() {
-        assert_eq!(markup_zu_text("<ol><li>a</li><li>b</li></ol>"), "1. a\n2. b");
+        assert_eq!(
+            markup_zu_text("<ol><li>a</li><li>b</li></ol>"),
+            "1. a\n2. b"
+        );
     }
 
     #[test]
     fn ohne_markup_und_entitaeten() {
-        assert_eq!(markup_zu_text("Nur Text &lt;x&gt; &#8211; &quot;q&quot;"), "Nur Text <x> – \"q\"");
+        assert_eq!(
+            markup_zu_text("Nur Text &lt;x&gt; &#8211; &quot;q&quot;"),
+            "Nur Text <x> – \"q\""
+        );
         assert_eq!(markup_zu_text("  "), "");
     }
 
     #[test]
     fn verschachtelte_liste() {
-        assert_eq!(markup_zu_text("<ul><li>a<ul><li>b</li></ul></li></ul>"), "• a\n  • b");
+        assert_eq!(
+            markup_zu_text("<ul><li>a<ul><li>b</li></ul></li></ul>"),
+            "• a\n  • b"
+        );
     }
 
     #[test]

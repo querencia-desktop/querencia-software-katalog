@@ -38,7 +38,10 @@ impl Lokalisiert {
 
     /// Text zu einer bestimmten Locale.
     pub fn genau(&self, locale: &str) -> Option<&str> {
-        self.0.iter().find(|(l, _)| l == locale).map(|(_, t)| t.as_str())
+        self.0
+            .iter()
+            .find(|(l, _)| l == locale)
+            .map(|(_, t)| t.as_str())
     }
 
     /// Bester Text nach [`LOCALE_REIHENFOLGE`]; sonst der erste vorhandene.
@@ -51,7 +54,9 @@ impl Lokalisiert {
 
     /// Ob eine deutsche Fassung vorhanden ist (de oder de_DE, nicht leer).
     pub fn deutsch(&self) -> bool {
-        self.genau("de").or_else(|| self.genau("de_DE")).is_some_and(|t| !t.trim().is_empty())
+        self.genau("de")
+            .or_else(|| self.genau("de_DE"))
+            .is_some_and(|t| !t.trim().is_empty())
     }
 
     pub fn ist_leer(&self) -> bool {
@@ -81,7 +86,9 @@ impl Schluesselwoerter {
     pub fn alle_fuer_suche(&self) -> Vec<String> {
         let mut aus = Vec::new();
         for locale in LOCALE_REIHENFOLGE {
-            let Some((_, w)) = self.0.iter().find(|(l, _)| l == locale) else { continue };
+            let Some((_, w)) = self.0.iter().find(|(l, _)| l == locale) else {
+                continue;
+            };
             for wort in w {
                 if !aus.iter().any(|a: &String| a.eq_ignore_ascii_case(wort)) {
                     aus.push(wort.clone());
@@ -144,7 +151,10 @@ pub struct RohKomponente {
 impl RohKomponente {
     /// Ob die Komponente eine Anwendung im Sinne des Katalogs ist (Typfilter, noch ohne Paketprüfung).
     pub fn ist_anwendungstyp(&self) -> bool {
-        matches!(self.typ.as_str(), "desktop-application" | "console-application")
+        matches!(
+            self.typ.as_str(),
+            "desktop-application" | "console-application"
+        )
     }
 }
 
@@ -162,7 +172,11 @@ impl Quellkopf {
             return relativ.to_string();
         }
         match &self.media_base_url {
-            Some(b) => format!("{}/{}", b.trim_end_matches('/'), relativ.trim_start_matches('/')),
+            Some(b) => format!(
+                "{}/{}",
+                b.trim_end_matches('/'),
+                relativ.trim_start_matches('/')
+            ),
             None => relativ.to_string(),
         }
     }

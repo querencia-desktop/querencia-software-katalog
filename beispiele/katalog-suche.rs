@@ -41,7 +41,11 @@ fn main() {
         None | Some("statistik") => {
             let b = katalog.ladebericht();
             println!("Ladezeit: {:?}", ladezeit);
-            println!("Quellen: {} Dateien, {} Einträge gelesen", statistik.quellen.len(), b.eintraege_gelesen);
+            println!(
+                "Quellen: {} Dateien, {} Einträge gelesen",
+                statistik.quellen.len(),
+                b.eintraege_gelesen
+            );
             println!("Komponenten (eindeutig): {}", statistik.komponenten);
             for (typ, n) in &b.je_typ {
                 println!("  {:24} {:5}", typ, n);
@@ -51,8 +55,14 @@ fn main() {
             println!("  mit deutscher Zusammenfassung: {}", statistik.deutsch);
             println!("  mit Themensymbol (stock): {}", b.mit_themensymbol);
             println!("  mit Symbol aus dem Katalog-Cache: {}", b.mit_cache_symbol);
-            println!("  mit lokal gefundener Symboldatei: {}", statistik.mit_symbol);
-            println!("Ausgeblendet: {} anderer Typ, {} ohne Paket, {} Bundle", b.ausgeblendet_typ, b.ausgeblendet_ohne_paket, b.ausgeblendet_bundle);
+            println!(
+                "  mit lokal gefundener Symboldatei: {}",
+                statistik.mit_symbol
+            );
+            println!(
+                "Ausgeblendet: {} anderer Typ, {} ohne Paket, {} Bundle",
+                b.ausgeblendet_typ, b.ausgeblendet_ohne_paket, b.ausgeblendet_bundle
+            );
             println!("Je Kategorie:");
             for (k, n) in &b.je_kategorie {
                 println!("  {:20} {:5}", k.name(), n);
@@ -68,7 +78,10 @@ fn main() {
             // Alle Anwendungen vollständig, für Vergleiche zwischen Einlesewegen.
             for a in katalog.alle() {
                 let z = katalog.zusatz(a).expect("zusatz");
-                println!("{:?} | {} | {:?} | {:?} | {:?}", a, z.typ, z.schluesselwoerter, z.symbol_fern_url, z.symbole_cache);
+                println!(
+                    "{:?} | {} | {:?} | {:?} | {:?}",
+                    a, z.typ, z.schluesselwoerter, z.symbol_fern_url, z.symbole_cache
+                );
             }
         }
         Some("quellen") => {
@@ -84,12 +97,28 @@ fn main() {
             for a in &treffer {
                 zeile(a);
             }
-            println!("{} Treffer für {:?} in {:?} (Laden {:?})", treffer.len(), text, dauer, ladezeit);
+            println!(
+                "{} Treffer für {:?} in {:?} (Laden {:?})",
+                treffer.len(),
+                text,
+                dauer,
+                ladezeit
+            );
         }
         Some("kategorie") => {
             let name = args.get(1).map(String::as_str).unwrap_or("");
-            let Some(k) = Kategorie::alle().iter().find(|k| k.name().eq_ignore_ascii_case(name) || format!("{:?}", k).eq_ignore_ascii_case(name)) else {
-                eprintln!("Unbekannte Kategorie {:?}. Bekannt: {}", name, Kategorie::alle().iter().map(|k| k.name()).collect::<Vec<_>>().join(", "));
+            let Some(k) = Kategorie::alle().iter().find(|k| {
+                k.name().eq_ignore_ascii_case(name) || format!("{:?}", k).eq_ignore_ascii_case(name)
+            }) else {
+                eprintln!(
+                    "Unbekannte Kategorie {:?}. Bekannt: {}",
+                    name,
+                    Kategorie::alle()
+                        .iter()
+                        .map(|k| k.name())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
                 std::process::exit(2);
             };
             let liste = katalog.kategorie(*k);
@@ -100,7 +129,11 @@ fn main() {
         }
         Some("id") | Some("paket") => {
             let schluessel = args.get(1).map(String::as_str).unwrap_or("");
-            let a = if args[0] == "id" { katalog.nach_id(schluessel) } else { katalog.nach_paket(schluessel) };
+            let a = if args[0] == "id" {
+                katalog.nach_id(schluessel)
+            } else {
+                katalog.nach_paket(schluessel)
+            };
             match a {
                 None => {
                     eprintln!("nicht gefunden: {}", schluessel);
@@ -109,7 +142,10 @@ fn main() {
                 Some(a) => {
                     println!("{:#?}", a);
                     if let Some(z) = katalog.zusatz(a) {
-                        println!("Typ: {}  Origin: {}  Schlüsselwörter: {:?}", z.typ, z.origin, z.schluesselwoerter);
+                        println!(
+                            "Typ: {}  Origin: {}  Schlüsselwörter: {:?}",
+                            z.typ, z.origin, z.schluesselwoerter
+                        );
                         println!("Symbol fern: {:?}", z.symbol_fern_url);
                     }
                     println!("Symbolpfad 48: {:?}", katalog.symbol_pfad(a, 48));

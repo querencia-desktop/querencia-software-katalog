@@ -15,7 +15,7 @@ use crate::{beschreibung, dep11, kategorien, symbole, xml};
 /// Höchstzahl der Suchtreffer.
 pub const MAX_TREFFER: usize = 200;
 
-/// Woher gelesen wird. [`Konfiguration::system`] entspricht SCHNITTSTELLEN.md; Tests setzen
+/// Woher gelesen wird. [`Konfiguration::system`] entspricht schnittstellen.md; Tests setzen
 /// eigene Verzeichnisse.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Konfiguration {
@@ -33,7 +33,7 @@ pub struct Konfiguration {
 }
 
 impl Konfiguration {
-    /// Die Systempfade aus SCHNITTSTELLEN.md.
+    /// Die Systempfade aus schnittstellen.md.
     pub fn system() -> Self {
         let home = std::env::var_os("HOME").map(PathBuf::from);
         let mut metainfo = vec![PathBuf::from("/usr/share/metainfo")];
@@ -173,7 +173,8 @@ impl AppStreamKatalog {
 
     /// Ob die Anwendung eine Konsolenanwendung ist (Expertenliste).
     pub fn ist_konsolenanwendung(&self, a: &Anwendung) -> bool {
-        self.zusatz(a).is_some_and(|z| z.typ == "console-application")
+        self.zusatz(a)
+            .is_some_and(|z| z.typ == "console-application")
     }
 
     /// Alle Konsolenanwendungen, nach Name sortiert.
@@ -187,13 +188,18 @@ impl AppStreamKatalog {
     }
 
     fn position(&self, a: &Anwendung) -> Option<usize> {
-        self.index_id.get(&a.id).copied().filter(|i| self.anwendungen[*i].id == a.id)
+        self.index_id
+            .get(&a.id)
+            .copied()
+            .filter(|i| self.anwendungen[*i].id == a.id)
     }
 
     // ---- Laden -------------------------------------------------------------------------------
 
     fn quelldateien(verzeichnis: &Path, metainfo: bool) -> Vec<PathBuf> {
-        let Ok(eintraege) = std::fs::read_dir(verzeichnis) else { return Vec::new() };
+        let Ok(eintraege) = std::fs::read_dir(verzeichnis) else {
+            return Vec::new();
+        };
         let mut dateien: Vec<PathBuf> = eintraege
             .filter_map(Result::ok)
             .map(|e| e.path())
@@ -202,15 +208,24 @@ impl AppStreamKatalog {
                 if metainfo {
                     name.ends_with(".metainfo.xml") || name.ends_with(".appdata.xml")
                 } else {
-                    name.ends_with(".yml") || name.ends_with(".yml.gz") || name.ends_with(".yaml")
-                        || name.ends_with(".yaml.gz") || name.ends_with(".xml") || name.ends_with(".xml.gz")
+                    name.ends_with(".yml")
+                        || name.ends_with(".yml.gz")
+                        || name.ends_with(".yaml")
+                        || name.ends_with(".yaml.gz")
+                        || name.ends_with(".xml")
+                        || name.ends_with(".xml.gz")
                 }
             })
             .filter(|p| p.is_file())
             .collect();
         // Sortierung so, dass `resolute_main` vor `resolute-updates_main` kommt
         // (`-` → `~` sortiert hinter `_`): spätere Pockets überschreiben frühere.
-        dateien.sort_by_cached_key(|p| p.file_name().unwrap_or_default().to_string_lossy().replace('-', "~"));
+        dateien.sort_by_cached_key(|p| {
+            p.file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .replace('-', "~")
+        });
         dateien
     }
 
@@ -237,10 +252,17 @@ impl AppStreamKatalog {
         let symbol = if let Some(thema) = &roh.symbol_thema {
             symbol_gefunden = self.themen.suchen(thema, 48).is_some();
             Symbol::Thema(thema.clone())
-        } else if let Some(p) = symbole::cache_pfad(&self.cache_vorhanden, &roh.origin, &roh.symbole_cache, 64) {
+        } else if let Some(p) =
+            symbole::cache_pfad(&self.cache_vorhanden, &roh.origin, &roh.symbole_cache, 64)
+        {
             symbol_gefunden = true;
             Symbol::Datei(p)
-        } else if let Some(l) = roh.symbol_lokal.as_deref().map(Path::new).filter(|p| p.is_file()) {
+        } else if let Some(l) = roh
+            .symbol_lokal
+            .as_deref()
+            .map(Path::new)
+            .filter(|p| p.is_file())
+        {
             symbol_gefunden = true;
             Symbol::Datei(l.to_path_buf())
         } else {
@@ -249,7 +271,10 @@ impl AppStreamKatalog {
 
         let felder = Suchfelder {
             name: suche::normalisieren(&name),
-            schluesselwoerter: schluesselwoerter.iter().map(|k| suche::normalisieren(k)).collect(),
+            schluesselwoerter: schluesselwoerter
+                .iter()
+                .map(|k| suche::normalisieren(k))
+                .collect(),
             zusammenfassung: suche::normalisieren(&zusammenfassung),
             paketname: suche::normalisieren(roh.paketname.as_deref().unwrap_or("")),
             beschreibung: suche::normalisieren(&beschreibung),
@@ -303,7 +328,9 @@ fn zusammenfuehren(neu: &mut RohKomponente, alt: &RohKomponente) {
     }
     for (locale, woerter) in &alt.schluesselwoerter.0 {
         if !neu.schluesselwoerter.0.iter().any(|(l, _)| l == locale) {
-            neu.schluesselwoerter.0.push((locale.clone(), woerter.clone()));
+            neu.schluesselwoerter
+                .0
+                .push((locale.clone(), woerter.clone()));
         }
     }
     if neu.paketname.is_none() {
@@ -367,7 +394,11 @@ impl Katalog for AppStreamKatalog {
             match Self::lese_quelle(pfad) {
                 Ok((_kopf, komponenten)) => {
                     gelesen += komponenten.len();
-                    quellen.push(format!("{} ({} Komponenten)", pfad.display(), komponenten.len()));
+                    quellen.push(format!(
+                        "{} ({} Komponenten)",
+                        pfad.display(),
+                        komponenten.len()
+                    ));
                     for mut k in komponenten {
                         match nach_id.get(&k.id) {
                             None => reihenfolge.push(k.id.clone()),
@@ -430,7 +461,8 @@ impl Katalog for AppStreamKatalog {
         }
 
         // 4. Statistik.
-        let mut je_kategorie: Vec<(Kategorie, usize)> = Kategorie::alle().iter().map(|k| (*k, 0)).collect();
+        let mut je_kategorie: Vec<(Kategorie, usize)> =
+            Kategorie::alle().iter().map(|k| (*k, 0)).collect();
         for (a, z) in self.anwendungen.iter().zip(&self.zusatz) {
             if z.typ == "console-application" {
                 bericht.konsolenanwendungen += 1;
@@ -454,7 +486,11 @@ impl Katalog for AppStreamKatalog {
             komponenten: reihenfolge.len(),
             mit_paket: self.anwendungen.len(),
             mit_symbol: self.zusatz.iter().filter(|z| z.symbol_gefunden).count(),
-            deutsch: self.zusatz.iter().filter(|z| z.deutsch_zusammenfassung).count(),
+            deutsch: self
+                .zusatz
+                .iter()
+                .filter(|z| z.deutsch_zusammenfassung)
+                .count(),
             quellen,
         };
         bericht.dauer = start.elapsed();
@@ -463,7 +499,10 @@ impl Katalog for AppStreamKatalog {
     }
 
     fn kategorie(&self, k: Kategorie) -> Vec<&Anwendung> {
-        self.anwendungen.iter().filter(|a| a.kategorien.contains(&k)).collect()
+        self.anwendungen
+            .iter()
+            .filter(|a| a.kategorien.contains(&k))
+            .collect()
     }
 
     fn suchen(&self, text: &str) -> Vec<&Anwendung> {
@@ -484,16 +523,24 @@ impl Katalog for AppStreamKatalog {
                 .zusatz
                 .iter()
                 .enumerate()
-                .filter_map(|(i, z)| suche::bewerten(&z.felder.gefaltet(), &gefaltet).map(|g| (g, i)))
+                .filter_map(|(i, z)| {
+                    suche::bewerten(&z.felder.gefaltet(), &gefaltet).map(|g| (g, i))
+                })
                 .collect();
         }
         // Stabil: bei gleichem Gewicht bleibt die Namensreihenfolge von `alle()` (sort_by ist stabil).
         treffer.sort_by(|a, b| b.0.cmp(&a.0));
-        treffer.into_iter().take(MAX_TREFFER).map(|(_, i)| &self.anwendungen[i]).collect()
+        treffer
+            .into_iter()
+            .take(MAX_TREFFER)
+            .map(|(_, i)| &self.anwendungen[i])
+            .collect()
     }
 
     fn nach_paket(&self, paketname: &str) -> Option<&Anwendung> {
-        self.index_paket.get(paketname).map(|i| &self.anwendungen[*i])
+        self.index_paket
+            .get(paketname)
+            .map(|i| &self.anwendungen[*i])
     }
 
     fn nach_id(&self, id: &str) -> Option<&Anwendung> {

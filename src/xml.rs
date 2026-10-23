@@ -4,7 +4,9 @@ use std::path::Path;
 
 use roxmltree::{Document, Node};
 
-use crate::komponente::{Lokalisiert, Quellkopf, RohKomponente, Schluesselwoerter, SymbolDatei, SymbolFern};
+use crate::komponente::{
+    Lokalisiert, Quellkopf, RohKomponente, Schluesselwoerter, SymbolDatei, SymbolFern,
+};
 
 /// Liest eine XML-Datei (`.xml` oder `.xml.gz`).
 pub fn lese_datei(pfad: &Path) -> Result<(Quellkopf, Vec<RohKomponente>), String> {
@@ -36,7 +38,10 @@ pub fn lese_text(text: &str) -> Result<(Quellkopf, Vec<RohKomponente>), String> 
         "components" => {
             kopf.origin = wurzel.attribute("origin").unwrap_or("").to_string();
             kopf.media_base_url = wurzel.attribute("media_baseurl").map(str::to_string);
-            for c in wurzel.children().filter(|c| c.is_element() && c.tag_name().name() == "component") {
+            for c in wurzel
+                .children()
+                .filter(|c| c.is_element() && c.tag_name().name() == "component")
+            {
                 if let Some(k) = komponente(c, &kopf) {
                     komponenten.push(k);
                 }
@@ -53,7 +58,8 @@ pub fn lese_text(text: &str) -> Result<(Quellkopf, Vec<RohKomponente>), String> 
 }
 
 fn lang<'a>(n: Node<'a, 'a>) -> &'a str {
-    n.attribute(("http://www.w3.org/XML/1998/namespace", "lang")).unwrap_or("C")
+    n.attribute(("http://www.w3.org/XML/1998/namespace", "lang"))
+        .unwrap_or("C")
 }
 
 fn text(n: Node<'_, '_>) -> String {
@@ -61,11 +67,14 @@ fn text(n: Node<'_, '_>) -> String {
 }
 
 fn kinder<'a>(n: Node<'a, 'a>, name: &'a str) -> impl Iterator<Item = Node<'a, 'a>> {
-    n.children().filter(move |c| c.is_element() && c.tag_name().name() == name)
+    n.children()
+        .filter(move |c| c.is_element() && c.tag_name().name() == name)
 }
 
 fn zahl(n: Node, attr: &str) -> u32 {
-    n.attribute(attr).and_then(|v| v.trim().parse().ok()).unwrap_or(0)
+    n.attribute(attr)
+        .and_then(|v| v.trim().parse().ok())
+        .unwrap_or(0)
 }
 
 /// Serialisiert den Inhalt eines Elements wieder als Markup (für die gemeinsame Textumwandlung).
@@ -91,7 +100,9 @@ fn innen_markup(n: Node, aus: &mut String) {
 }
 
 fn escape(t: &str) -> String {
-    t.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+    t.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 fn komponente(c: Node, kopf: &Quellkopf) -> Option<RohKomponente> {
@@ -99,9 +110,15 @@ fn komponente(c: Node, kopf: &Quellkopf) -> Option<RohKomponente> {
     let mut k = RohKomponente {
         typ: c.attribute("type").unwrap_or("generic").trim().to_string(),
         id,
-        paketname: kinder(c, "pkgname").next().map(text).filter(|s| !s.is_empty()),
+        paketname: kinder(c, "pkgname")
+            .next()
+            .map(text)
+            .filter(|s| !s.is_empty()),
         bundle: kinder(c, "bundle").next().is_some(),
-        lizenz: kinder(c, "project_license").next().map(text).filter(|s| !s.is_empty()),
+        lizenz: kinder(c, "project_license")
+            .next()
+            .map(text)
+            .filter(|s| !s.is_empty()),
         homepage: kinder(c, "url")
             .find(|u| u.attribute("type") == Some("homepage"))
             .map(text)
@@ -118,7 +135,11 @@ fn komponente(c: Node, kopf: &Quellkopf) -> Option<RohKomponente> {
     // Beschreibung: Katalog-XML lokalisiert das ganze Element, MetaInfo jeden Absatz einzeln.
     for d in kinder(c, "description") {
         let l = lang(d);
-        if l != "C" || !d.children().any(|p| p.is_element() && p.has_attribute(("http://www.w3.org/XML/1998/namespace", "lang"))) {
+        if l != "C"
+            || !d.children().any(|p| {
+                p.is_element() && p.has_attribute(("http://www.w3.org/XML/1998/namespace", "lang"))
+            })
+        {
             let mut m = String::new();
             innen_markup(d, &mut m);
             k.beschreibung.setzen(l, m);
@@ -155,7 +176,11 @@ fn komponente(c: Node, kopf: &Quellkopf) -> Option<RohKomponente> {
         let kl = lang(kw);
         let mut je_locale: Vec<(String, Vec<String>)> = Vec::new();
         for w in kinder(kw, "keyword") {
-            let wl = if kl != "C" { kl.to_string() } else { lang(w).to_string() };
+            let wl = if kl != "C" {
+                kl.to_string()
+            } else {
+                lang(w).to_string()
+            };
             let wort = text(w);
             if wort.is_empty() {
                 continue;
@@ -246,7 +271,10 @@ mod tests {
         assert_eq!(k.typ, "desktop-application");
         assert_eq!(k.paketname.as_deref(), Some("bar"));
         assert_eq!(k.name.genau("de"), Some("Bär"));
-        assert_eq!(k.beschreibung.genau("C"), Some("<p>First.</p><ul><li>one</li></ul>"));
+        assert_eq!(
+            k.beschreibung.genau("C"),
+            Some("<p>First.</p><ul><li>one</li></ul>")
+        );
         assert_eq!(k.beschreibung.genau("de"), Some("<p>Erstens.</p>"));
         assert_eq!(k.schluesselwoerter.alle_fuer_suche(), ["Riegel", "bar"]);
         assert_eq!(k.symbol_thema.as_deref(), Some("bar"));
