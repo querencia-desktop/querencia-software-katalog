@@ -2,7 +2,8 @@
 //!
 //! Läuft nur auf Anforderung: `cargo test --release --test vm -- --ignored --nocapture`
 //! oder `skripte/vm-pruefung.sh`. Erwartung vom 18.10.2026: 2634 Komponenten
-//! (`appstreamcli status`), 2215 Desktop- + 17 Konsolenanwendungen mit Paket.
+//! (`appstreamcli status`), 2215 Desktop- + 17 Konsolenanwendungen mit Paket. Stand 27.10.2026
+//! nach Zusammenlegen der Schreibweisen mit und ohne `.desktop`: 2647 Komponenten.
 
 use std::time::Instant;
 
@@ -42,11 +43,26 @@ fn echte_vm_daten() {
 
     // Bekannte Einträge.
     let gedit = k.nach_paket("gedit").expect("gedit");
-    assert_eq!(gedit.id, "org.gnome.gedit.desktop");
+    assert_eq!(gedit.id, "org.gnome.gedit");
     assert_eq!(gedit.zusammenfassung, "Texteditor");
     assert!(gedit.kategorien.contains(&Kategorie::Zubehoer));
     assert_eq!(gedit.symbol, Symbol::Thema("org.gnome.gedit".into()));
     assert!(k.nach_id("org.gnome.gedit").is_some());
+    assert!(k.nach_id("org.gnome.gedit.desktop").is_some());
+    // Keine Kennung doppelt, keine mit Altschreibweise (QD-182: Remmina stand zweimal da).
+    let mut ids: Vec<&str> = k.alle().iter().map(|a| a.id.as_str()).collect();
+    assert!(ids.iter().all(|i| !i.ends_with(".desktop")));
+    ids.sort_unstable();
+    let vorher = ids.len();
+    ids.dedup();
+    assert_eq!(ids.len(), vorher);
+    let remmina: Vec<_> = k
+        .suchen("remmina")
+        .into_iter()
+        .filter(|a| a.paketname.as_deref() == Some("remmina"))
+        .collect();
+    assert_eq!(remmina.len(), 1);
+    assert_eq!(remmina[0].id, "org.remmina.Remmina");
     let gimp = k.suchen("gimp");
     assert_eq!(
         gimp.first().and_then(|a| a.paketname.as_deref()),

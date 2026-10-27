@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use qs_typen::{Anwendung, Kategorie, Symbol};
 
-use crate::komponente::{Quellkopf, RohKomponente, SymbolDatei};
+use crate::komponente::{id_normalisieren, Quellkopf, RohKomponente, SymbolDatei};
 use crate::suche::{self, Suchfelder};
 use qs_typen::{Katalog, Statistik};
 
@@ -20,7 +20,7 @@ pub const MAX_TREFFER: usize = 200;
 #[derive(Clone, Debug, PartialEq)]
 pub struct Konfiguration {
     /// Katalogverzeichnisse mit `*.yml[.gz]` oder `*.xml[.gz]`, in Leserreihenfolge
-    /// (spätere Quellen überschreiben gleiche IDs).
+    /// (spätere Quellen überschreiben gleiche IDs; `x.desktop` gilt als dieselbe ID wie `x`).
     pub katalog_verzeichnisse: Vec<PathBuf>,
     /// Verzeichnisse mit MetaInfo-Dateien (`*.metainfo.xml`, `*.appdata.xml`).
     pub metainfo_verzeichnisse: Vec<PathBuf>,
@@ -189,9 +189,9 @@ impl AppStreamKatalog {
 
     fn position(&self, a: &Anwendung) -> Option<usize> {
         self.index_id
-            .get(&a.id)
+            .get(id_normalisieren(&a.id))
             .copied()
-            .filter(|i| self.anwendungen[*i].id == a.id)
+            .filter(|i| self.anwendungen[*i].id == id_normalisieren(&a.id))
     }
 
     // ---- Laden -------------------------------------------------------------------------------
@@ -315,6 +315,11 @@ impl AppStreamKatalog {
 /// MetaInfo-Dateien haben oft kein `<pkgname>` und kein Katalogsymbol, beschreiben aber dieselbe
 /// Komponente wie der Paketkatalog.
 fn zusammenfuehren(neu: &mut RohKomponente, alt: &RohKomponente) {
+    // Ein Eintrag ohne Typ (`generic`) verdrängt keine Anwendung: Ubuntu führt z. B.
+    // `org.kitone.subtitleeditor` als Anwendung und `….desktop` als `generic`.
+    if neu.typ == "generic" && alt.ist_anwendungstyp() {
+        neu.typ = alt.typ.clone();
+    }
     for (ziel, quelle) in [
         (&mut neu.name, &alt.name),
         (&mut neu.zusammenfassung, &alt.zusammenfassung),
@@ -379,7 +384,7 @@ impl Katalog for AppStreamKatalog {
             .collect();
         let mut quellen: Vec<String> = Vec::new();
 
-        // 1. Alle Quellen lesen; gleiche ID: spätere Quelle gewinnt.
+        // 1. Alle Quellen lesen; IDs ohne Endung `.desktop`; gleiche ID: spätere Quelle gewinnt.
         let mut nach_id: HashMap<String, RohKomponente> = HashMap::new();
         let mut reihenfolge: Vec<String> = Vec::new();
         let mut gelesen = 0usize;
@@ -400,6 +405,10 @@ impl Katalog for AppStreamKatalog {
                         komponenten.len()
                     ));
                     for mut k in komponenten {
+                        let kurz = id_normalisieren(&k.id);
+                        if kurz.len() != k.id.len() {
+                            k.id = kurz.to_string();
+                        }
                         match nach_id.get(&k.id) {
                             None => reihenfolge.push(k.id.clone()),
                             Some(alt) => zusammenfuehren(&mut k, alt),
@@ -450,9 +459,6 @@ impl Katalog for AppStreamKatalog {
         self.index_paket = HashMap::with_capacity(paare.len());
         for (i, (a, z)) in paare.into_iter().enumerate() {
             self.index_id.insert(a.id.clone(), i);
-            if let Some(kurz) = a.id.strip_suffix(".desktop") {
-                self.index_id.entry(kurz.to_string()).or_insert(i);
-            }
             if let Some(p) = &a.paketname {
                 self.index_paket.entry(p.clone()).or_insert(i);
             }
@@ -544,9 +550,9 @@ impl Katalog for AppStreamKatalog {
     }
 
     fn nach_id(&self, id: &str) -> Option<&Anwendung> {
+        // Beide Schreibweisen finden dieselbe Anwendung (Starter-Zuordnung über Desktop-Dateien).
         self.index_id
-            .get(id)
-            .or_else(|| self.index_id.get(id.strip_suffix(".desktop").unwrap_or(id)))
+            .get(id_normalisieren(id))
             .map(|i| &self.anwendungen[*i])
     }
 
