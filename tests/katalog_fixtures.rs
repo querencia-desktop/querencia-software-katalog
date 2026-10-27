@@ -201,7 +201,7 @@ fn suche_mit_umlauten() {
         let t = k.suchen(text);
         assert_eq!(
             t.first().map(|a| a.id.as_str()),
-            Some("org.example.Buero.desktop"),
+            Some("org.example.Buero"),
             "Suche {:?}: {:?}",
             text,
             t.len()
@@ -349,4 +349,131 @@ fn spaetere_quelle_ueberschreibt() {
     assert_eq!(s.komponenten, 1);
     assert_eq!(k2.nach_paket("a").unwrap().name, "Neu");
     let _ = (k, std::fs::remove_dir_all(&verzeichnis));
+}
+
+/// Lädt nur die angegebenen DEP-11-Dateien (Name, Inhalt) aus einem eigenen Prüfordner.
+fn katalog_aus(ordner: &str, dateien: &[(&str, String)]) -> AppStreamKatalog {
+    let verzeichnis = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(ordner);
+    let _ = std::fs::remove_dir_all(&verzeichnis);
+    std::fs::create_dir_all(&verzeichnis).unwrap();
+    for (name, inhalt) in dateien {
+        std::fs::write(verzeichnis.join(name), inhalt).unwrap();
+    }
+    let mut k = AppStreamKatalog::mit_konfiguration(Konfiguration {
+        katalog_verzeichnisse: vec![verzeichnis.clone()],
+        metainfo_verzeichnisse: vec![],
+        symbol_cache_verzeichnisse: vec![fixture("icons")],
+        themen_verzeichnisse: vec![],
+        mit_konsolenanwendungen: true,
+    });
+    k.laden().unwrap();
+    let _ = std::fs::remove_dir_all(&verzeichnis);
+    k
+}
+
+fn remmina_eintrag(id: &str, name: &str, symbol: bool) -> String {
+    let symbol = if symbol {
+        "Icon:\n  cached:\n  - name: buero_buero.png\n    width: 64\n    height: 64\n"
+    } else {
+        ""
+    };
+    format!(
+        "---\nFile: DEP-11\nVersion: '1.0'\nOrigin: test-origin\n---\nType: desktop-application\nID: {id}\nPackage: remmina\nName:\n  C: {name}\nSummary:\n  C: Fernzugriff\n{symbol}"
+    )
+}
+
+#[test]
+fn desktop_endung_ist_dieselbe_komponente() {
+    // Wie Ubuntu: resolute mit Altschreibweise, resolute-updates ohne Endung (Remmina, QD-182).
+    for (alt, neu) in [
+        ("org.remmina.Remmina.desktop", "org.remmina.Remmina"),
+        ("org.remmina.Remmina", "org.remmina.Remmina.desktop"),
+    ] {
+        let k = katalog_aus(
+            "qs_katalog_desktop_endung",
+            &[
+                (
+                    "archive_dists_resolute_main.yml",
+                    remmina_eintrag(alt, "Alt", true),
+                ),
+                (
+                    "archive_dists_resolute-updates_main.yml",
+                    remmina_eintrag(neu, "Neu", false),
+                ),
+            ],
+        );
+        assert_eq!(k.ladebericht().statistik.komponenten, 1, "{alt} → {neu}");
+        assert_eq!(k.ladebericht().eintraege_gelesen, 2);
+        assert_eq!(k.alle().len(), 1);
+        assert_eq!(k.suchen("remmina").len(), 1);
+        // Die später gelesene Quelle gewinnt, egal in welcher Schreibweise.
+        let a = &k.alle()[0];
+        assert_eq!(a.name, "Neu");
+        assert_eq!(a.id, "org.remmina.Remmina");
+        // Starter-Zuordnung mit beiden Schreibweisen.
+        assert_eq!(
+            k.nach_id("org.remmina.Remmina").map(|x| &x.name),
+            Some(&a.name)
+        );
+        assert_eq!(
+            k.nach_id("org.remmina.Remmina.desktop").map(|x| &x.name),
+            Some(&a.name)
+        );
+        assert!(k.nach_id("org.remmina.remmina").is_none());
+        // Das Symbol der früheren Quelle bleibt erhalten und wird gefunden.
+        assert!(k
+            .symbol_pfad(a, 64)
+            .unwrap()
+            .ends_with("test-origin/64x64/buero_buero.png"));
+        assert!(k.zusatz(a).is_some());
+    }
+}
+
+#[test]
+fn desktop_endung_gross_klein_bleibt() {
+    let k = katalog_aus(
+        "qs_katalog_desktop_gross_klein",
+        &[
+            (
+                "archive_dists_resolute_main.yml",
+                remmina_eintrag("org.remmina.Remmina.desktop", "Gross", false),
+            ),
+            (
+                "archive_dists_resolute-updates_main.yml",
+                remmina_eintrag("org.remmina.remmina", "Klein", false),
+            ),
+        ],
+    );
+    // Andere Schreibung ist eine andere ID; nur die Endung wird abgeschnitten.
+    assert_eq!(k.ladebericht().statistik.komponenten, 2);
+    let mut ids: Vec<&str> = k.alle().iter().map(|a| a.id.as_str()).collect();
+    ids.sort();
+    assert_eq!(ids, ["org.remmina.Remmina", "org.remmina.remmina"]);
+    assert_eq!(
+        k.nach_id("org.remmina.Remmina.desktop").unwrap().name,
+        "Gross"
+    );
+    assert_eq!(
+        k.nach_id("org.remmina.remmina.desktop").unwrap().name,
+        "Klein"
+    );
+}
+
+#[test]
+fn generischer_eintrag_verdraengt_keine_anwendung() {
+    // Wie Subtitle Editor bei Ubuntu: Anwendung ohne Endung, danach `generic` mit Endung.
+    let anwendung = remmina_eintrag("org.kitone.subtitleeditor", "Anwendung", true);
+    let generisch = "---\nType: generic\nID: org.kitone.subtitleeditor.desktop\nPackage: remmina\nName:\n  C: Generisch\nSummary:\n  C: s\n";
+    let k = katalog_aus(
+        "qs_katalog_generisch",
+        &[(
+            "archive_dists_resolute_universe.yml",
+            format!("{anwendung}{generisch}"),
+        )],
+    );
+    assert_eq!(k.ladebericht().statistik.komponenten, 1);
+    let a = k.nach_id("org.kitone.subtitleeditor").expect("sichtbar");
+    assert_eq!(a.name, "Generisch");
+    assert_eq!(k.zusatz(a).unwrap().typ, "desktop-application");
+    assert!(k.symbol_pfad(a, 64).is_some());
 }

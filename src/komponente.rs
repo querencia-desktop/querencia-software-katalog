@@ -148,6 +148,17 @@ pub struct RohKomponente {
     pub origin: String,
 }
 
+/// Komponenten-ID in der heutigen Schreibweise: Die Altschreibweise mit der Endung `.desktop`
+/// bezeichnet nach der AppStream-Regel dieselbe Komponente wie die ID ohne Endung (Ubuntu führt
+/// z. B. `org.remmina.Remmina.desktop` in `resolute` und `org.remmina.Remmina` in
+/// `resolute-updates`). Sonst bleibt die ID unverändert, auch die Groß-/Kleinschreibung.
+pub fn id_normalisieren(id: &str) -> &str {
+    match id.strip_suffix(".desktop") {
+        Some(kurz) if !kurz.is_empty() => kurz,
+        _ => id,
+    }
+}
+
 impl RohKomponente {
     /// Ob die Komponente eine Anwendung im Sinne des Katalogs ist (Typfilter, noch ohne Paketprüfung).
     pub fn ist_anwendungstyp(&self) -> bool {
@@ -179,5 +190,30 @@ impl Quellkopf {
             ),
             None => relativ.to_string(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::id_normalisieren;
+
+    #[test]
+    fn id_ohne_desktop_endung() {
+        assert_eq!(
+            id_normalisieren("org.remmina.Remmina.desktop"),
+            "org.remmina.Remmina"
+        );
+        assert_eq!(
+            id_normalisieren("org.remmina.Remmina"),
+            "org.remmina.Remmina"
+        );
+        // Groß-/Kleinschreibung bleibt, nur die genaue Endung zählt.
+        assert_eq!(id_normalisieren("Org.Foo.Desktop"), "Org.Foo.Desktop");
+        assert_eq!(id_normalisieren("Org.Foo.DESKTOP"), "Org.Foo.DESKTOP");
+        assert_eq!(id_normalisieren("gimp.desktop"), "gimp");
+        assert_eq!(id_normalisieren("a.desktop.desktop"), "a.desktop");
+        // Nur die Endung ohne Namen bleibt unverändert.
+        assert_eq!(id_normalisieren(".desktop"), ".desktop");
+        assert_eq!(id_normalisieren(""), "");
     }
 }

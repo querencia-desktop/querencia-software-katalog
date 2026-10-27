@@ -8,10 +8,12 @@
 //! cargo run --release --example katalog-suche -- paket gedit
 //! cargo run --release --example katalog-suche -- quellen           # gelesene Dateien
 //! cargo run --release --example katalog-suche -- dump              # alle Anwendungen vollständig
+//! cargo run --release --example katalog-suche -- doppel            # IDs mit und ohne „.desktop“
 //! ```
 //! Mit `QS_KATALOG_VERZEICHNIS=<pfad>` wird statt der Systempfade nur dieses Verzeichnis
 //! (Katalogdateien und MetaInfo) gelesen.
 
+use std::collections::{BTreeMap, BTreeSet};
 use std::time::Instant;
 
 use qs_katalog::{AppStreamKatalog, Katalog, Kategorie, Konfiguration, Symbol};
@@ -82,6 +84,60 @@ fn main() {
                     "{:?} | {} | {:?} | {:?} | {:?}",
                     a, z.typ, z.schluesselwoerter, z.symbol_fern_url, z.symbole_cache
                 );
+            }
+        }
+        Some("doppel") => {
+            // Kennungen, die in den Quellen mit und ohne „.desktop“ vorkommen, und Anwendungen,
+            // die im geladenen Katalog mehrfach unter derselben Kennung ohne „.desktop“ stehen.
+            let mut schreibweisen: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+            let k = katalog.konfiguration();
+            for v in k
+                .katalog_verzeichnisse
+                .iter()
+                .chain(&k.metainfo_verzeichnisse)
+            {
+                let Ok(eintraege) = std::fs::read_dir(v) else {
+                    continue;
+                };
+                for e in eintraege.filter_map(Result::ok) {
+                    let p = e.path();
+                    let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("");
+                    let gelesen = if name.contains(".yml") || name.contains(".yaml") {
+                        qs_katalog::dep11::lese_datei(&p)
+                    } else if name.ends_with(".xml") || name.ends_with(".xml.gz") {
+                        qs_katalog::xml::lese_datei(&p)
+                    } else {
+                        continue;
+                    };
+                    for roh in gelesen.map(|(_, k)| k).unwrap_or_default() {
+                        let kurz = roh.id.strip_suffix(".desktop").unwrap_or(&roh.id);
+                        schreibweisen
+                            .entry(kurz.to_string())
+                            .or_default()
+                            .insert(roh.id.clone());
+                    }
+                }
+            }
+            let quellen_doppelt: Vec<_> = schreibweisen
+                .iter()
+                .filter(|(_, s)| s.len() > 1)
+                .map(|(k, _)| k)
+                .collect();
+            let mut je_kennung: BTreeMap<&str, usize> = BTreeMap::new();
+            for a in katalog.alle() {
+                let kurz = a.id.strip_suffix(".desktop").unwrap_or(&a.id);
+                *je_kennung.entry(kurz).or_insert(0) += 1;
+            }
+            let katalog_doppelt: Vec<_> = je_kennung.iter().filter(|(_, n)| **n > 1).collect();
+            println!("Komponenten (eindeutig): {}", statistik.komponenten);
+            println!("Sichtbare Anwendungen: {}", statistik.mit_paket);
+            println!(
+                "Kennungen mit beiden Schreibweisen in den Quellen: {}",
+                quellen_doppelt.len()
+            );
+            println!("Doppelte Anwendungen im Katalog: {}", katalog_doppelt.len());
+            for (kennung, n) in &katalog_doppelt {
+                println!("  {} ({}×)", kennung, n);
             }
         }
         Some("quellen") => {
@@ -155,7 +211,7 @@ fn main() {
             }
         }
         Some(andere) => {
-            eprintln!("Unbekannter Befehl {:?}. Befehle: statistik, quellen, dump, suche TEXT, kategorie NAME, id ID, paket NAME", andere);
+            eprintln!("Unbekannter Befehl {:?}. Befehle: statistik, quellen, dump, doppel, suche TEXT, kategorie NAME, id ID, paket NAME", andere);
             std::process::exit(2);
         }
     }

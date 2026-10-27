@@ -105,10 +105,19 @@ fn escape(t: &str) -> String {
         .replace('>', "&gt;")
 }
 
+/// Komponententyp; `desktop` ist die Altschreibweise von `desktop-application` (AppStream),
+/// die installierte MetaInfo-Dateien noch nutzen (z. B. GIMP).
+fn typ_normalisieren(typ: &str) -> String {
+    match typ.trim() {
+        "desktop" => "desktop-application".to_string(),
+        t => t.to_string(),
+    }
+}
+
 fn komponente(c: Node, kopf: &Quellkopf) -> Option<RohKomponente> {
     let id = kinder(c, "id").next().map(text).filter(|s| !s.is_empty())?;
     let mut k = RohKomponente {
-        typ: c.attribute("type").unwrap_or("generic").trim().to_string(),
+        typ: typ_normalisieren(c.attribute("type").unwrap_or("generic")),
         id,
         paketname: kinder(c, "pkgname")
             .next()
@@ -299,5 +308,14 @@ mod tests {
         assert_eq!(k[0].symbole_fern[0].url, "https://m.example/a/b.png");
         assert_eq!(k[0].schluesselwoerter.alle_fuer_suche(), ["Alpha"]);
         assert!(k[1].bundle);
+    }
+
+    #[test]
+    fn typ_altschreibweise() {
+        let xml = r#"<components><component type="desktop"><id>a</id><name>A</name></component>
+<component><id>b</id><name>B</name></component></components>"#;
+        let (_, k) = lese_text(xml).unwrap();
+        assert_eq!(k[0].typ, "desktop-application");
+        assert_eq!(k[1].typ, "generic");
     }
 }

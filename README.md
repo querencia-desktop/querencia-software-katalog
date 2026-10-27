@@ -8,7 +8,7 @@ Wird als Teil von Querencia Software ausgeliefert; Anleitung auf
 
 *English summary:* AppStream catalogue of Querencia Software: reads the system's AppStream data, maps categories, searches and resolves icons (`qs_katalog`). Part of Querencia Desktop. Alpha software; documentation is in German.
 
-> **Alpha.** Version 0.1.0 (Tag `katalog/0.1.0`). Keine Sicherheits- oder Datenverlustgarantie.
+> **Alpha.** Version 0.1.1 (Tag `katalog/0.1.1`). Keine Sicherheits- oder Datenverlustgarantie.
 
 ## Zusammenspiel der Repos
 
@@ -51,8 +51,12 @@ let pfad = gedit.and_then(|a| katalog.symbol_pfad(a, 48));
    (`*.yml[.gz]`, `*.xml[.gz]`; innerhalb eines Ordners so sortiert, dass `resolute-updates` nach `resolute` kommt)
 2. `/usr/share/metainfo/*.{metainfo,appdata}.xml`, `~/.local/share/metainfo/*.xml`
 
+Eine ID mit der Endung `.desktop` ist dieselbe Komponente wie die ID ohne Endung (AppStream-Regel;
+Ubuntu führt manche Programme in `resolute` mit und in `resolute-updates` ohne Endung). Der Katalog
+speichert die ID ohne Endung; `nach_id` findet beide Schreibweisen.
+
 Fehlt einer späteren Quelle etwas (typisch: installierte MetaInfo ohne `<pkgname>`, ohne Symbol,
-ohne Beschreibung), wird es aus der früheren übernommen. Eine unlesbare Datei landet in
+ohne Beschreibung, nur Typ `generic`), wird es aus der früheren übernommen. Eine unlesbare Datei landet in
 `ladebericht().fehler`, das Laden geht weiter.
 
 ## Entscheidungen
@@ -84,8 +88,9 @@ cargo run --offline --release --example katalog-suche                       # St
 cargo run --offline --release --example katalog-suche -- suche texteditor
 cargo run --offline --release --example katalog-suche -- kategorie Büro
 cargo run --offline --release --example katalog-suche -- paket gedit
-cargo run --offline --release --example katalog-suche -- id org.gnome.gedit.desktop
+cargo run --offline --release --example katalog-suche -- id org.gnome.gedit
 cargo run --offline --release --example katalog-suche -- dump               # alle Felder, für Vergleiche
+cargo run --offline --release --example katalog-suche -- doppel             # IDs mit und ohne „.desktop“
 ```
 
 `QS_KATALOG_VERZEICHNIS=<ordner>` liest statt der Systempfade nur diesen Ordner.
@@ -93,7 +98,7 @@ cargo run --offline --release --example katalog-suche -- dump               # al
 ## Prüfen
 
 ```bash
-nice cargo test --offline -j2                         # 45 Tests mit Fixtures (tests/fixtures)
+nice cargo test --offline -j2                         # 50 Tests mit Fixtures (tests/fixtures)
 nice cargo clippy --offline -j2 --all-targets -- -D warnings
 skripte/vm-pruefung.sh                                # echte VM: Integrationstest, Ladezeit, Gegenprobe
 ```
